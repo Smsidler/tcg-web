@@ -1,6 +1,13 @@
 # TCG Web
+# 🃏 TCG Web
 
-A web application for managing and selling Pokémon TCG cards, built with **Django** and integrated with the **TCGdex API**.
+[![Python](https://img.shields.io/badge/Python-3.10-blue?logo=python)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/Django-5.2-green?logo=django)](https://www.djangoproject.com/)
+[![SQLite](https://img.shields.io/badge/Database-SQLite-blue?logo=sqlite)](https://www.sqlite.org/)
+[![TCGdex](https://img.shields.io/badge/API-TCGdex-purple)](https://tcgdex.dev/)
+[![Status](https://img.shields.io/badge/Status-In%20Development-orange)](https://github.com/Smsidler/tcg-web)
+
+A web application for managing and selling Pokémon TCG cards, built with Django and integrated with the TCGdex API.
 
 The project separates external card information from the store's own inventory, prices, and products, allowing the catalog to be managed efficiently without storing the entire TCGdex database locally.
 
@@ -93,82 +100,3 @@ tcg-web/
 ```
 
 ---
-
-## ⚙️ Installation
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/Smsidler/tcg-web.git
-cd tcg-web
-```
-
-### 2. Create a virtual environment
-
-```bash
-python -m venv venv
-```
-
-### 3. Activate the virtual environment
-
-#### Windows PowerShell
-
-```powershell
-.\venv\Scripts\Activate.ps1
-```
-
-#### Windows CMD
-
-```cmd
-venv\Scripts\activate
-```
-
-### 4. Install dependencies
-
-```bash
-pip install django
-```
-
-### 5. Apply migrations
-
-```bash
-python manage.py migrate
-```
-
-### 6. Create a superuser
-
-```bash
-python manage.py createsuperuser
-```
-
-### 7. Start the development server
-
-```bash
-python manage.py runserver
-```
-
-Open:
-
-```text
-http://127.0.0.1:8000/
-```
-
-Django Admin:
-
-```text
-http://127.0.0.1:8000/admin/
-```
-
----
-
-## 🃏 Importing Cards from TCGdex
-
-Cards can be imported directly from TCGdex using a Django management command.
-
-For example:
-
-```bash
-python manage.py import_card base1-4
-```
-
-This imports the card inform
