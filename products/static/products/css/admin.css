@@ -1,0 +1,591 @@
+/* =========================================================
+   TCG WEB - DJANGO ADMIN THEME
+   ========================================================= */
+
+
+/* =========================================================
+   1. GLOBAL VARIABLES
+   ========================================================= */
+
+
+html[data-theme="light"],
+:root {
+    /* Django Admin variables */
+    --primary: #1f2937;
+    --secondary: #111827;
+    --accent: #facc15;
+
+    --primary-fg: #ffffff;
+
+    --body-fg: #111827;
+    --body-bg: #f5f7fa;
+    --body-quiet-color: #6b7280;
+    --body-medium-color: #374151;
+    --body-loud-color: #111827;
+
+    --header-color: #ffffff;
+    --header-branding-color: #facc15;
+    --header-bg: #111827;
+    --header-link-color: #ffffff;
+
+    --breadcrumbs-fg: #d1d5db;
+    --breadcrumbs-link-fg: #ffffff;
+    --breadcrumbs-bg: #1f2937;
+
+    --link-fg: #2563eb;
+    --link-hover-color: #1d4ed8;
+    --link-selected-fg: #1d4ed8;
+
+    --hairline-color: #e5e7eb;
+    --border-color: #d1d5db;
+
+    --error-fg: #dc2626;
+
+    --message-success-bg: #dcfce7;
+    --message-warning-bg: #fef3c7;
+    --message-error-bg: #fee2e2;
+
+    --darkened-bg: #f3f4f6;
+    --selected-bg: #fef9c3;
+    --selected-row: #fef9c3;
+
+    --button-fg: #ffffff;
+    --button-bg: #111827;
+    --button-hover-bg: #1f2937;
+
+    --default-button-bg: #facc15;
+    --default-button-hover-bg: #eab308;
+
+    /* Our own variables */
+    --tcg-dark: #111827;
+    --tcg-dark-soft: #1f2937;
+    --tcg-yellow: #facc15;
+    --tcg-yellow-hover: #eab308;
+    --tcg-background: #f5f7fa;
+    --tcg-surface: #ffffff;
+    --tcg-border: #e5e7eb;
+    --tcg-text: #111827;
+    --tcg-text-soft: #6b7280;
+    --tcg-success: #16a34a;
+    --tcg-danger: #dc2626;
+    --tcg-radius: 10px;
+}
+
+
+/* =========================================================
+   2. GENERAL PAGE
+   ========================================================= */
+
+body {
+    background: var(--tcg-background);
+    color: var(--tcg-text);
+}
+
+#container {
+    background: var(--tcg-background);
+}
+
+#content {
+    padding: 30px 40px;
+}
+
+#content h1 {
+    font-weight: 600;
+    color: var(--tcg-text);
+    margin-bottom: 24px;
+}
+
+
+/* =========================================================
+   3. HEADER
+   ========================================================= */
+
+#header {
+    background: var(--tcg-dark);
+    color: white;
+
+    min-height: 64px;
+    padding: 0 32px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   4. BRAND
+   ========================================================= */
+
+#branding h1 {
+    margin: 0;
+}
+
+#branding h1 a:link,
+#branding h1 a:visited {
+    color: var(--tcg-yellow);
+
+    font-size: 24px;
+    font-weight: 600;
+
+    text-decoration: none;
+}
+
+
+/* =========================================================
+   5. USER TOOLS
+   ========================================================= */
+
+#user-tools {
+    margin: 0;
+
+    color: #d1d5db;
+
+    font-size: 12px;
+    letter-spacing: 0.3px;
+}
+
+#user-tools a {
+    color: white;
+    text-decoration: none;
+}
+
+#user-tools a:hover {
+    color: var(--tcg-yellow);
+}
+
+
+/* =========================================================
+   6. BREADCRUMBS
+   ========================================================= */
+
+div.breadcrumbs {
+    background: var(--tcg-dark-soft);
+
+    padding: 12px 40px;
+
+    color: #d1d5db;
+}
+
+div.breadcrumbs a {
+    color: white;
+}
+
+div.breadcrumbs a:hover {
+    color: var(--tcg-yellow);
+}
+
+
+/* =========================================================
+   7. DASHBOARD LAYOUT
+   ========================================================= */
+
+.dashboard #content {
+    width: auto;
+}
+
+.dashboard #content-main {
+    max-width: 900px;
+}
+
+
+/* =========================================================
+   8. MODULES / CARDS
+   ========================================================= */
+
+.module {
+    background: var(--tcg-surface);
+
+    border: 1px solid var(--tcg-border);
+    border-radius: var(--tcg-radius);
+
+    overflow: hidden;
+
+    margin-bottom: 25px;
+
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+
+/* =========================================================
+   9. MODULE TITLES
+   ========================================================= */
+
+.module caption,
+.inline-group h2 {
+    background: var(--tcg-dark-soft);
+
+    color: white;
+
+    padding: 13px 16px;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.module caption a {
+    color: white;
+    text-decoration: none;
+}
+
+
+/* =========================================================
+   10. TABLES
+   ========================================================= */
+
+.module table {
+    width: 100%;
+}
+
+.module th,
+.module td {
+    padding: 12px 16px;
+}
+
+.module tr {
+    transition: background 0.15s ease;
+}
+
+.module tr:hover {
+    background: #f9fafb;
+}
+
+
+/* =========================================================
+   11. LINKS
+   ========================================================= */
+
+a:link,
+a:visited {
+    color: #2563eb;
+}
+
+a:hover {
+    color: #1d4ed8;
+}
+
+
+/* =========================================================
+   12. BUTTONS
+   ========================================================= */
+
+.button,
+input[type="submit"],
+input[type="button"],
+.submit-row input,
+a.button {
+    background: var(--tcg-dark);
+
+    color: white;
+
+    border: none;
+    border-radius: 7px;
+
+    padding: 10px 16px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        transform 0.15s ease;
+}
+
+.button:hover,
+input[type="submit"]:hover,
+input[type="button"]:hover,
+.submit-row input:hover,
+a.button:hover {
+    background: var(--tcg-dark-soft);
+}
+
+
+/* Default save button */
+
+.submit-row input.default {
+    background: var(--tcg-yellow);
+    color: var(--tcg-dark);
+
+    font-weight: 600;
+}
+
+.submit-row input.default:hover {
+    background: var(--tcg-yellow-hover);
+}
+
+
+/* =========================================================
+   13. DELETE BUTTONS
+   ========================================================= */
+
+.deletelink,
+.deletelink-box a {
+    color: var(--tcg-danger) !important;
+}
+
+
+/* =========================================================
+   14. INPUTS
+   ========================================================= */
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="url"],
+textarea,
+select {
+    border: 1px solid #d1d5db;
+
+    border-radius: 7px;
+
+    padding: 8px 10px;
+
+    background: white;
+
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+
+/* Focus */
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: var(--tcg-yellow);
+
+    outline: none;
+
+    box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.15);
+}
+
+
+/* =========================================================
+   15. FORM SECTIONS
+   ========================================================= */
+
+fieldset.module {
+    padding: 0;
+}
+
+fieldset.module h2 {
+    background: var(--tcg-dark-soft);
+
+    color: white;
+
+    padding: 12px 16px;
+
+    margin: 0;
+}
+
+.form-row {
+    padding: 14px 16px;
+
+    border-bottom: 1px solid var(--tcg-border);
+}
+
+
+/* =========================================================
+   16. CHANGE LIST
+   Cards / Products / Sets lists
+   ========================================================= */
+
+#changelist {
+    background: transparent;
+}
+
+#changelist .results {
+    background: white;
+
+    border: 1px solid var(--tcg-border);
+    border-radius: var(--tcg-radius);
+
+    overflow: hidden;
+}
+
+#result_list {
+    border-radius: var(--tcg-radius);
+}
+
+#result_list thead th {
+    background: var(--tcg-dark-soft);
+
+    color: white;
+
+    padding: 12px;
+}
+
+#result_list thead th a {
+    color: white;
+}
+
+#result_list tbody td,
+#result_list tbody th {
+    padding: 12px;
+}
+
+#result_list tbody tr:hover {
+    background: #f9fafb;
+}
+
+
+/* =========================================================
+   17. SEARCH BAR
+   ========================================================= */
+
+#changelist-search {
+    background: white;
+
+    border: 1px solid var(--tcg-border);
+    border-radius: var(--tcg-radius);
+
+    padding: 12px;
+
+    margin-bottom: 18px;
+}
+
+#changelist-search input[type="text"] {
+    min-height: 36px;
+}
+
+
+/* =========================================================
+   18. FILTER SIDEBAR
+   ========================================================= */
+
+#changelist-filter {
+    background: white;
+
+    border: 1px solid var(--tcg-border);
+    border-radius: var(--tcg-radius);
+
+    overflow: hidden;
+}
+
+#changelist-filter h2 {
+    background: var(--tcg-dark-soft);
+
+    color: white;
+
+    padding: 13px 16px;
+}
+
+#changelist-filter h3 {
+    color: var(--tcg-text);
+
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   19. OBJECT TOOLS
+   Add Product / Add Card etc.
+   ========================================================= */
+
+.object-tools a:link,
+.object-tools a:visited {
+    background: var(--tcg-dark);
+
+    color: white;
+
+    border-radius: 7px;
+
+    padding: 9px 14px;
+}
+
+.object-tools a:hover {
+    background: var(--tcg-yellow);
+
+    color: var(--tcg-dark);
+}
+
+
+/* =========================================================
+   20. SUBMIT ROW
+   ========================================================= */
+
+.submit-row {
+    background: white;
+
+    border: 1px solid var(--tcg-border);
+    border-radius: var(--tcg-radius);
+
+    padding: 14px;
+
+    box-shadow: none;
+}
+
+
+/* =========================================================
+   21. RECENT ACTIONS
+   ========================================================= */
+
+#content-related {
+    background: transparent;
+}
+
+#content-related .module {
+    background: white;
+
+    border: 1px solid var(--tcg-border);
+    border-radius: var(--tcg-radius);
+
+    overflow: hidden;
+
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+#content-related .module h2 {
+    background: var(--tcg-dark-soft);
+
+    color: white;
+
+    padding: 14px 16px;
+}
+
+
+/* =========================================================
+   22. MESSAGES
+   ========================================================= */
+
+ul.messagelist li {
+    border-radius: 7px;
+
+    margin: 10px 40px;
+
+    padding: 12px 15px;
+}
+
+ul.messagelist li.success {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+
+/* =========================================================
+   23. RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 767px) {
+
+    #header {
+        padding: 15px 20px;
+    }
+
+    #content {
+        padding: 20px;
+    }
+
+    div.breadcrumbs {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    #branding h1 a:link,
+    #branding h1 a:visited {
+        font-size: 20px;
+    }
+}

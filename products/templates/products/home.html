@@ -1,0 +1,565 @@
+{% load static %}
+{% load product_filters %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>TCG Web | Tienda Pokémon TCG</title>
+
+    <link rel="stylesheet" href="{% static 'products/css/store.css' %}">
+</head>
+
+<body>
+
+<!-- ======================================================
+     HEADER
+====================================================== -->
+
+<header class="site-header">
+
+    <div class="container nav-main">
+
+        <a href="/" class="brand">
+            <span class="brand-mark">◆</span>
+
+            <div>
+                <span class="brand-name">TCG WEB</span>
+                <span class="brand-subtitle">COLECCIONA • INTERCAMBIA • JUEGA</span>
+            </div>
+        </a>
+
+        <nav class="nav-links">
+            <a href="/" class="active">Inicio</a>
+            <a href="#cards">Cartas</a>
+            <a href="#categories">Sets</a>
+            <a href="#about">Nosotros</a>
+        </nav>
+
+        <a href="#cards" class="nav-collection">
+            Colección
+        </a>
+
+    </div>
+
+    <div class="container search-wrapper">
+
+        <form class="header-search" action="/" method="GET">
+
+            <span class="search-icon">⌕</span>
+
+            <input
+                type="search"
+                name="q"
+                placeholder="Busca cartas, sets o rarezas..."
+                autocomplete="off"
+            >
+
+            <button type="submit">
+                Buscar
+            </button>
+
+        </form>
+
+    </div>
+
+</header>
+
+
+<!-- ======================================================
+     HERO
+====================================================== -->
+
+<main>
+
+<section class="hero">
+
+    <div class="container hero-grid">
+
+        <div class="hero-content">
+
+            <span class="eyebrow">
+                TIENDA POKÉMON TCG
+            </span>
+
+            <h1>
+                Construye tu
+                <span>colección.</span>
+            </h1>
+
+            <p class="hero-description">
+                Descubre cartas Pokémon, explora sets legendarios
+                y encuentra la próxima carta para tu colección.
+            </p>
+
+            <div class="hero-actions">
+
+                <a href="#cards" class="button button-primary">
+                    Explorar cartas →
+                </a>
+
+                <a href="#categories" class="button button-secondary">
+                    Ver sets
+                </a>
+
+            </div>
+
+            <div class="hero-features">
+
+                <span>✓ Datos reales</span>
+                <span>✓ Stock local</span>
+                <span>✓ Precios en CLP</span>
+
+            </div>
+
+        </div>
+
+
+        <div class="hero-visual">
+
+            {% for product in products|slice:":3" %}
+
+                {% if product.card %}
+
+                    <div class="hero-card hero-card-{{ forloop.counter }}">
+
+                        <img
+                            src="{{ product.card.image }}/high.webp"
+                            alt="{{ product.card.name }}"
+                        >
+
+                    </div>
+
+                {% endif %}
+
+            {% empty %}
+
+                <div class="hero-placeholder">
+                    Pokémon TCG
+                </div>
+
+            {% endfor %}
+
+            <div class="hero-circle"></div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     CATEGORÍAS
+====================================================== -->
+
+<section class="categories" id="categories">
+
+    <div class="container">
+
+        <div class="section-title center">
+
+            <span class="section-label">
+                EXPLORA
+            </span>
+
+            <h2>Encuentra lo que estás buscando</h2>
+
+            <p>
+                Todo lo que necesitas para hacer crecer tu colección Pokémon TCG.
+            </p>
+
+        </div>
+
+
+        <div class="category-grid">
+
+            <a href="#cards" class="category-card">
+
+                <span class="category-number">01</span>
+
+                <div>
+                    <h3>Cartas individuales</h3>
+                    <p>Explora nuestras cartas Pokémon disponibles.</p>
+                </div>
+
+                <span class="category-arrow">→</span>
+
+            </a>
+
+
+            <a href="#cards" class="category-card">
+
+                <span class="category-number">02</span>
+
+                <div>
+                    <h3>Sets Pokémon</h3>
+                    <p>Descubre cartas de expansiones icónicas.</p>
+                </div>
+
+                <span class="category-arrow">→</span>
+
+            </a>
+
+
+            <a href="#cards" class="category-card">
+
+                <span class="category-number">03</span>
+
+                <div>
+                    <h3>Stock disponible</h3>
+                    <p>Revisa las cartas disponibles actualmente.</p>
+                </div>
+
+                <span class="category-arrow">→</span>
+
+            </a>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     PRODUCTOS
+====================================================== -->
+
+<section class="products-section" id="cards">
+
+    <div class="container">
+
+        <div class="products-heading">
+
+            <div>
+
+                <span class="section-label">
+                    LA COLECCIÓN
+                </span>
+
+                <h2>Cartas disponibles</h2>
+
+                <p>
+                    Descubre las cartas disponibles actualmente en nuestra tienda.
+                </p>
+
+            </div>
+
+            <a href="#cards" class="view-all">
+                Ver todas las cartas →
+            </a>
+
+        </div>
+
+
+        <div class="product-grid">
+
+            {% for product in products %}
+
+                {% if product.card %}
+
+                    <article class="product-card">
+
+                        <a
+                            href="{% url 'product_detail' product.card.tcgdex_id %}"
+                            class="product-link"
+                        >
+
+                        <div class="product-image-container">
+
+                            {% if product.stock <= 5 and product.stock > 0 %}
+                                <span class="product-badge">
+                                    POCAS UNIDADES
+                                </span>
+                            {% endif %}
+
+                            <img
+                                class="product-image"
+                                src="{{ product.card.image }}/high.webp"
+                                alt="{{ product.card.name }}"
+                                loading="lazy"
+                            >
+
+                        </div>
+
+
+                        <div class="product-info">
+
+                            <div class="product-meta">
+
+                                <span class="product-set">
+                                    {{ product.card.set.name }}
+                                </span>
+
+                                {% if product.card.local_id %}
+                                    <span>
+                                        #{{ product.card.local_id }}
+                                    </span>
+                                {% endif %}
+
+                            </div>
+
+
+                            <h3 class="product-name">
+                                {{ product.card.name }}
+                            </h3>
+
+
+                            <p class="product-rarity">
+                                {{ product.card.rarity }}
+                            </p>
+
+
+                            <div class="product-footer">
+
+                                <p class="product-price">
+                                    {{ product.price|clp }}
+                                </p>
+
+
+                                {% if product.stock == 0 %}
+
+                                    <span class="stock out-of-stock">
+                                        Agotado
+                                    </span>
+
+                                {% elif product.stock <= 5 %}
+
+                                    <span class="stock low-stock">
+                                        Quedan {{ product.stock }}
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="stock in-stock">
+                                        Disponible
+                                    </span>
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+                        </a>
+
+                    </article>
+
+                {% endif %}
+
+            {% empty %}
+
+                <div class="empty-message">
+
+                    <h3>No hay cartas disponibles</h3>
+
+                    <p>
+                        Los productos agregados desde el panel de administración
+                        aparecerán aquí.
+                    </p>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     BUSCADOR
+====================================================== -->
+
+<section class="search-cta">
+
+    <div class="container">
+
+        <div class="search-cta-box">
+
+            <div class="search-cta-content">
+
+                <span class="section-label light">
+                    ¿BUSCAS ALGO EN ESPECIAL?
+                </span>
+
+                <h2>Encuentra tu próxima carta.</h2>
+
+                <p>
+                    Busca en nuestra colección Pokémon TCG por nombre,
+                    set o rareza.
+                </p>
+
+            </div>
+
+
+            <form class="cta-search" action="/" method="GET">
+
+                <input
+                    type="search"
+                    name="q"
+                    placeholder="Busca Charizard, Pikachu, Base Set..."
+                >
+
+                <button type="submit">
+                    Buscar →
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     BENEFICIOS
+====================================================== -->
+
+<section class="benefits" id="about">
+
+    <div class="container">
+
+        <div class="section-title center">
+
+            <span class="section-label">
+                ¿POR QUÉ TCG WEB?
+            </span>
+
+            <h2>Hecho para coleccionistas</h2>
+
+            <p>
+                Una forma simple de descubrir y comprar cartas Pokémon TCG.
+            </p>
+
+        </div>
+
+
+        <div class="benefit-grid">
+
+            <div class="benefit">
+
+                <span class="benefit-icon">◇</span>
+
+                <h3>Información real</h3>
+
+                <p>
+                    Información e imágenes de las cartas obtenidas
+                    desde nuestra base de datos TCG integrada.
+                </p>
+
+            </div>
+
+
+            <div class="benefit">
+
+                <span class="benefit-icon">◎</span>
+
+                <h3>Inventario local</h3>
+
+                <p>
+                    El stock se administra directamente
+                    desde nuestro propio inventario.
+                </p>
+
+            </div>
+
+
+            <div class="benefit">
+
+                <span class="benefit-icon">$</span>
+
+                <h3>Precios en CLP</h3>
+
+                <p>
+                    Precios claros y adaptados
+                    al mercado chileno.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+</main>
+
+
+<!-- ======================================================
+     FOOTER
+====================================================== -->
+
+<footer class="footer">
+
+    <div class="container footer-grid">
+
+        <div>
+
+            <a href="/" class="brand footer-brand">
+
+                <span class="brand-mark">◆</span>
+
+                <div>
+                    <span class="brand-name">TCG WEB</span>
+                    <span class="brand-subtitle">COLECCIONA • INTERCAMBIA • JUEGA</span>
+                </div>
+
+            </a>
+
+            <p class="footer-description">
+                Cartas y coleccionables Pokémon TCG
+                para coleccionistas y jugadores.
+            </p>
+
+        </div>
+
+
+        <div class="footer-column">
+
+            <h4>Explorar</h4>
+
+            <a href="/">Inicio</a>
+            <a href="#cards">Cartas</a>
+            <a href="#categories">Sets</a>
+
+        </div>
+
+
+        <div class="footer-column">
+
+            <h4>TCG Web</h4>
+
+            <a href="#about">Nosotros</a>
+            <a href="#">Contacto</a>
+
+        </div>
+
+    </div>
+
+
+    <div class="container footer-bottom">
+
+        <p>
+            © 2026 TCG Web. Todos los derechos reservados.
+        </p>
+
+        <p>
+            Pokémon es una marca registrada de Nintendo,
+            Creatures Inc. y GAME FREAK inc.
+        </p>
+
+    </div>
+
+</footer>
+
+</body>
+</html>

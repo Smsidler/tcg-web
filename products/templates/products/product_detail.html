@@ -1,0 +1,269 @@
+{% load static %}
+{% load product_filters %}
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>{{ product.card.name }} | TCG Web</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'products/css/store.css' %}"
+    >
+
+</head>
+
+
+<body>
+
+
+<header class="site-header">
+
+    <div class="container nav-main">
+
+        <a href="/" class="brand">
+
+            <span class="brand-mark">◆</span>
+
+            <div>
+                <span class="brand-name">
+                    TCG WEB
+                </span>
+
+                <span class="brand-subtitle">
+                    COLECCIONA • INTERCAMBIA • JUEGA
+                </span>
+            </div>
+
+        </a>
+
+
+        <nav class="nav-links">
+
+            <a href="/">
+                Inicio
+            </a>
+
+            <a href="/#cards">
+                Cartas
+            </a>
+
+            <a href="/#categories">
+                Sets
+            </a>
+
+            <a href="/#about">
+                Nosotros
+            </a>
+
+        </nav>
+
+    </div>
+
+</header>
+
+
+
+<main class="product-detail-page">
+
+    <div class="container">
+
+
+        <a href="/#cards" class="back-link">
+            ← Volver a cartas
+        </a>
+
+
+        <div class="product-detail-grid">
+
+
+            <!-- IMAGE -->
+
+            <div class="detail-image-area">
+
+                <img
+                    src="{{ product.card.image }}/high.webp"
+                    alt="{{ product.card.name }}"
+                    class="detail-image"
+                >
+
+            </div>
+
+
+
+            <!-- INFORMATION -->
+
+            <div class="detail-content">
+
+
+                <span class="section-label">
+                    {{ product.card.set.name }}
+                </span>
+
+
+                <h1>
+                    {{ product.card.name }}
+                </h1>
+
+
+                <div class="detail-meta">
+
+                    {% if product.card.local_id %}
+
+                        <span>
+                            Carta #{{ product.card.local_id }}
+                        </span>
+
+                    {% endif %}
+
+
+                    {% if product.card.rarity %}
+
+                        <span>
+                            {{ product.card.rarity }}
+                        </span>
+
+                    {% endif %}
+
+                </div>
+
+
+
+                <p class="detail-price">
+
+                    {{ product.price|clp }}
+
+                </p>
+
+
+
+                <div class="detail-stock">
+
+                    {% if product.stock == 0 %}
+
+                        <span class="stock out-of-stock">
+                            Agotado
+                        </span>
+
+                    {% elif product.stock <= 5 %}
+
+                        <span class="stock low-stock">
+                            Solo quedan {{ product.stock }}
+                        </span>
+
+                    {% else %}
+
+                        <span class="stock in-stock">
+                            Disponible
+                        </span>
+
+                    {% endif %}
+
+                </div>
+
+
+
+                {% if product.description %}
+
+                    <p class="detail-description">
+                        {{ product.description }}
+                    </p>
+
+                {% endif %}
+
+
+
+                <div class="card-information">
+
+                    <h2>
+                        Información de la carta
+                    </h2>
+
+
+                    <div class="information-row">
+
+                        <span>Set</span>
+
+                        <strong>
+                            {{ product.card.set.name }}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="information-row">
+
+                        <span>Número</span>
+
+                        <strong>
+                            #{{ product.card.local_id }}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="information-row">
+
+                        <span>Rareza</span>
+
+                        <strong>
+                            {{ product.card.rarity|default:"—" }}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="information-row">
+
+                        <span>Ilustrador</span>
+
+                        <strong>
+                            {{ product.card.illustrator|default:"—" }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+
+                {% if product.stock > 0 %}
+
+                    <button
+                        class="add-cart-button"
+                        type="button"
+                    >
+                        Agregar al carrito
+                    </button>
+
+                {% else %}
+
+                    <button
+                        class="add-cart-button disabled"
+                        type="button"
+                        disabled
+                    >
+                        Producto agotado
+                    </button>
+
+                {% endif %}
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+</main>
+
+
+</body>
+</html>
