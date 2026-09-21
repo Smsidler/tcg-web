@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TCG Web | Tienda Pokémon TCG{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'products/css/store.css' %}">
+</head>
+<body>
+<a class="skip-link" href="#main-content">Saltar al contenido</a>
+<header class="site-header">
+    <div class="container nav-main">
+        <a href="{% url 'home' %}" class="brand">
+            <span class="brand-mark" aria-hidden="true">◆</span>
+            <div><span class="brand-name">TCG WEB</span><span class="brand-subtitle">COLECCIONA • INTERCAMBIA • JUEGA</span></div>
+        </a>
+        <nav class="nav-links" aria-label="Navegación principal">
+            <a href="{% url 'home' %}">Inicio</a>
+            <a href="{% url 'home' %}#cards">Cartas</a>
+            <a href="{% url 'home' %}#catalog-filters">Sets</a>
+            <a href="{% url 'home' %}#about">Nosotros</a>
+        </nav>
+        <a href="{% url 'cart_detail' %}" class="nav-collection">Carrito</a>
+    </div>
+    {% block header_search %}{% endblock %}
+</header>
+{% if messages %}
+<div class="container notices" aria-live="polite">
+    {% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}
+</div>
+{% endif %}
+{% block content %}{% endblock %}
+<footer class="footer">
+    <div class="container footer-grid">
+        <div><a href="{% url 'home' %}" class="brand"><span class="brand-name">TCG WEB</span></a><p class="footer-description">Cartas y coleccionables Pokémon TCG para coleccionistas y jugadores.</p></div>
+        <div class="footer-column"><h2>Explorar</h2><a href="{% url 'home' %}#cards">Cartas</a><a href="{% url 'home' %}#catalog-filters">Sets</a><a href="{% url 'cart_detail' %}">Carrito</a></div>
+    </div>
+    <div class="container footer-bottom"><p>© {% now "Y" %} TCG Web.</p><p>Pokémon es una marca registrada de Nintendo, Creatures Inc. y GAME FREAK inc.</p></div>
+</footer>
+</body>
+</html>

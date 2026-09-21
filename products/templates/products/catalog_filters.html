@@ -1,0 +1,16 @@
+<form id="catalog-filters" class="catalog-filters" action="{% url 'home' %}#cards" method="get">
+    <label>Buscar<input type="search" name="q" value="{{ query }}" placeholder="Nombre, número, rareza o SKU"></label>
+    <label>Set<select name="set">
+        <option value="">Todos los sets</option>
+        {% for set in sets %}<option value="{{ set.tcgdex_id }}" {% if selected_set == set.tcgdex_id %}selected{% endif %}>{{ set.name }}</option>{% endfor %}
+    </select></label>
+    <label>Ordenar<select name="sort">
+        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Más recientes</option>
+        <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Menor precio</option>
+        <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Mayor precio</option>
+        <option value="name" {% if sort == 'name' %}selected{% endif %}>Nombre</option>
+    </select></label>
+    <label class="checkbox-label"><input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}> Solo con stock</label>
+    <button type="submit" class="button button-primary">Aplicar</button>
+    <a href="{% url 'home' %}#cards">Limpiar filtros</a>
+</form>

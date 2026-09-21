@@ -1,0 +1,14 @@
+{% extends 'products/base.html' %}
+{% load product_filters %}
+{% block title %}Versiones de {{ card.name }} | TCG Web{% endblock %}
+{% block content %}
+<main id="main-content" class="container cart-page">
+    <h1>{{ card.name }}</h1><p>Selecciona la versión que quieres ver.</p>
+    <div class="variant-list">
+    {% for product in products %}
+        <a href="{% url 'product_detail' product.pk %}">{{ product.get_language_display }} · {{ product.get_condition_display }} · {{ product.get_variant_display }} — {{ product.price|clp }}{% if not product.stock %} (Agotado){% endif %}</a>
+    {% empty %}<p>No hay productos de esta carta a la venta.</p>{% endfor %}
+    </div>
+    <a href="{% url 'home' %}#cards">Volver al catálogo</a>
+</main>
+{% endblock %}

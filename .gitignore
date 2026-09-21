@@ -14,3 +14,9 @@ db.sqlite3
 
 # Visual Studio Code
 .vscode/
+.venv/
+.env.*
+!.env.example
+staticfiles/
+.coverage
+htmlcov/
