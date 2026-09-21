@@ -1,269 +1,47 @@
-{% load static %}
+{% extends 'products/base.html' %}
 {% load product_filters %}
-
-<!DOCTYPE html>
-<html lang="es">
-
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>{{ product.card.name }} | TCG Web</title>
-
-    <link
-        rel="stylesheet"
-        href="{% static 'products/css/store.css' %}"
-    >
-
-</head>
-
-
-<body>
-
-
-<header class="site-header">
-
-    <div class="container nav-main">
-
-        <a href="/" class="brand">
-
-            <span class="brand-mark">◆</span>
-
-            <div>
-                <span class="brand-name">
-                    TCG WEB
-                </span>
-
-                <span class="brand-subtitle">
-                    COLECCIONA • INTERCAMBIA • JUEGA
-                </span>
-            </div>
-
-        </a>
-
-
-        <nav class="nav-links">
-
-            <a href="/">
-                Inicio
-            </a>
-
-            <a href="/#cards">
-                Cartas
-            </a>
-
-            <a href="/#categories">
-                Sets
-            </a>
-
-            <a href="/#about">
-                Nosotros
-            </a>
-
-        </nav>
-
-    </div>
-
-</header>
-
-
-
-<main class="product-detail-page">
-
+{% block title %}{{ product.card.name }} | TCG Web{% endblock %}
+{% block content %}
+<main id="main-content" class="product-detail-page">
     <div class="container">
-
-
-        <a href="/#cards" class="back-link">
-            ← Volver a cartas
-        </a>
-
-
+        <a href="{% url 'home' %}#cards" class="back-link">← Volver a cartas</a>
         <div class="product-detail-grid">
-
-
-            <!-- IMAGE -->
-
             <div class="detail-image-area">
-
-                <img
-                    src="{{ product.card.image }}/high.webp"
-                    alt="{{ product.card.name }}"
-                    class="detail-image"
-                >
-
+                {% if product.card.image_url %}<img src="{{ product.card.image_url }}" alt="{{ product.card.name }}" class="detail-image">{% else %}<span class="image-placeholder">Imagen no disponible</span>{% endif %}
             </div>
-
-
-
-            <!-- INFORMATION -->
-
             <div class="detail-content">
-
-
-                <span class="section-label">
-                    {{ product.card.set.name }}
-                </span>
-
-
-                <h1>
-                    {{ product.card.name }}
-                </h1>
-
-
-                <div class="detail-meta">
-
-                    {% if product.card.local_id %}
-
-                        <span>
-                            Carta #{{ product.card.local_id }}
-                        </span>
-
-                    {% endif %}
-
-
-                    {% if product.card.rarity %}
-
-                        <span>
-                            {{ product.card.rarity }}
-                        </span>
-
-                    {% endif %}
-
-                </div>
-
-
-
-                <p class="detail-price">
-
-                    {{ product.price|clp }}
-
-                </p>
-
-
-
-                <div class="detail-stock">
-
-                    {% if product.stock == 0 %}
-
-                        <span class="stock out-of-stock">
-                            Agotado
-                        </span>
-
-                    {% elif product.stock <= 5 %}
-
-                        <span class="stock low-stock">
-                            Solo quedan {{ product.stock }}
-                        </span>
-
-                    {% else %}
-
-                        <span class="stock in-stock">
-                            Disponible
-                        </span>
-
-                    {% endif %}
-
-                </div>
-
-
-
-                {% if product.description %}
-
-                    <p class="detail-description">
-                        {{ product.description }}
-                    </p>
-
-                {% endif %}
-
-
-
+                <span class="section-label">{{ product.card.set.name }}</span>
+                <h1>{{ product.card.name }}</h1>
+                <div class="detail-meta"><span>Carta #{{ product.card.local_id }}</span><span>{{ product.card.rarity }}</span></div>
+                <p class="detail-price">{{ product.price|clp }}</p>
+                <p class="detail-stock">{% if product.stock %}{{ product.stock }} unidades disponibles{% else %}Agotado{% endif %}</p>
+                {% if product.description %}<p class="detail-description">{{ product.description }}</p>{% endif %}
                 <div class="card-information">
-
-                    <h2>
-                        Información de la carta
-                    </h2>
-
-
-                    <div class="information-row">
-
-                        <span>Set</span>
-
-                        <strong>
-                            {{ product.card.set.name }}
-                        </strong>
-
-                    </div>
-
-
-                    <div class="information-row">
-
-                        <span>Número</span>
-
-                        <strong>
-                            #{{ product.card.local_id }}
-                        </strong>
-
-                    </div>
-
-
-                    <div class="information-row">
-
-                        <span>Rareza</span>
-
-                        <strong>
-                            {{ product.card.rarity|default:"—" }}
-                        </strong>
-
-                    </div>
-
-
-                    <div class="information-row">
-
-                        <span>Ilustrador</span>
-
-                        <strong>
-                            {{ product.card.illustrator|default:"—" }}
-                        </strong>
-
-                    </div>
-
+                    <h2>Información del producto</h2>
+                    <div class="information-row"><span>SKU</span><strong class="sku">{{ product.sku }}</strong></div>
+                    <div class="information-row"><span>Idioma</span><strong>{{ product.get_language_display }}</strong></div>
+                    <div class="information-row"><span>Condición</span><strong>{{ product.get_condition_display }}</strong></div>
+                    <div class="information-row"><span>Variante</span><strong>{{ product.get_variant_display }}</strong></div>
+                    <div class="information-row"><span>Set</span><strong>{{ product.card.set.name }}</strong></div>
+                    <div class="information-row"><span>Ilustrador</span><strong>{{ product.card.illustrator|default:'—' }}</strong></div>
                 </div>
-
-
-
                 {% if product.stock > 0 %}
-
-                    <button
-                        class="add-cart-button"
-                        type="button"
-                    >
-                        Agregar al carrito
-                    </button>
-
-                {% else %}
-
-                    <button
-                        class="add-cart-button disabled"
-                        type="button"
-                        disabled
-                    >
-                        Producto agotado
-                    </button>
-
+                <form action="{% url 'cart_add' product.pk %}" method="post" class="purchase-form">
+                    {% csrf_token %}
+                    <label for="quantity">Cantidad</label>
+                    <input id="quantity" type="number" name="quantity" value="1" min="1" max="{{ product.stock }}" required>
+                    <button class="add-cart-button" type="submit">Agregar al carrito</button>
+                </form>
+                {% else %}<button class="add-cart-button disabled" type="button" disabled>Producto agotado</button>{% endif %}
+                {% if variants %}
+                <section class="variant-list"><h2>Otras versiones</h2>
+                    {% for variant in variants %}
+                    <a href="{% url 'product_detail' variant.pk %}">{{ variant.get_language_display }} · {{ variant.get_condition_display }} · {{ variant.get_variant_display }} — {{ variant.price|clp }}{% if not variant.stock %} (Agotado){% endif %}</a>
+                    {% endfor %}
+                </section>
                 {% endif %}
-
-
             </div>
-
         </div>
-
     </div>
-
 </main>
-
-
-</body>
-</html>
+{% endblock %}

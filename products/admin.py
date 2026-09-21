@@ -1,81 +1,59 @@
 from django.contrib import admin
-from django.utils.html import mark_safe
+from django.utils.html import format_html
 
-from .models import Set, Card, Product
+from .models import Card, Product, Set
+
+
+def card_preview(card):
+    if not card or not card.thumbnail_url:
+        return "Sin imagen"
+    return format_html(
+        '<img src="{}" alt="{}" width="60" style="height: auto;" />',
+        card.thumbnail_url, card.name,
+    )
 
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = (
-        "image_preview",
-        "card",
-        "price",
-        "stock_status",
-        "category",
-        "created_at",
+    list_display = ("image_preview", "sku", "card", "language", "condition", "variant", "price", "stock_status")
+    search_fields = ("sku", "card__name", "card__tcgdex_id", "category")
+    list_filter = ("language", "condition", "variant", "category", "card__set")
+    list_select_related = ("card", "card__set")
+    ordering = ("card__name", "pk")
+    autocomplete_fields = ("card",)
+    fieldsets = (
+        ("Carta y versión", {"fields": ("card", "sku", "language", "condition", "variant")}),
+        ("Precio e inventario", {"fields": ("price", "stock")}),
+        ("Información adicional", {"fields": ("category", "description")}),
     )
 
-    search_fields = ("card__name", "category")
-    list_filter = ("category", "stock")
-    ordering = ("card__name",)
-    autocomplete_fields = ("card",)
-    
-    fieldsets = (
-    ("Carta", {
-        "fields": ("card",)
-    }),
-    ("Precio e inventario", {
-        "fields": ("price", "stock")
-    }),
-    ("Información adicional", {
-        "fields": ("category", "description")
-    }),
-)
-    
     @admin.display(description="Imagen")
     def image_preview(self, obj):
-        if obj.card and obj.card.image:
-            image_url = f"{obj.card.image}/low.webp"
-
-            return mark_safe(
-                f'<img src="{image_url}" width="60" style="height: auto;" />'
-            )
-
-        return "Sin imagen"
+        return card_preview(obj.card)
 
     @admin.display(description="Stock", ordering="stock")
     def stock_status(self, obj):
         if obj.stock == 0:
-            return mark_safe(
-                '<span style="color: #dc3545; font-weight: bold;">● Sin stock</span>'
-            )
-
+            color, label = "#dc3545", "Sin stock"
         elif obj.stock <= 5:
-            return mark_safe(
-                f'<span style="color: #fd7e14; font-weight: bold;">● Stock bajo ({obj.stock})</span>'
-            )
+            color, label = "#9a5b00", f"Stock bajo ({obj.stock})"
+        else:
+            color, label = "#198754", f"Disponible ({obj.stock})"
+        return format_html('<span style="color: {}; font-weight: bold;">● {}</span>', color, label)
 
-        return mark_safe(
-            f'<span style="color: #198754; font-weight: bold;">● Disponible ({obj.stock})</span>'
-        )
 
 @admin.register(Card)
 class CardAdmin(admin.ModelAdmin):
     list_display = ("image_preview", "name", "set", "rarity", "category", "local_id")
     search_fields = ("name", "tcgdex_id", "local_id")
     list_filter = ("set", "rarity", "category")
+    list_select_related = ("set",)
     ordering = ("name",)
 
     @admin.display(description="Imagen")
     def image_preview(self, obj):
-        if obj.image:
-            image_url = f"{obj.image}/low.webp"
+        return card_preview(obj)
 
-        return mark_safe(
-            f'<img src="{image_url}" width="60" style="height: auto;" />'
-        )
-
-        return "Sin imagen"
 
 @admin.register(Set)
 class SetAdmin(admin.ModelAdmin):

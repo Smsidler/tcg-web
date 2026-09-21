@@ -1,64 +1,18 @@
-import json
-import urllib.request
-
 from django.core.management.base import BaseCommand, CommandError
 
-from products.models import Card, Set
+from products.services.tcgdex import CatalogError, import_card
 
 
 class Command(BaseCommand):
-    help = "Importa una carta desde TCGdex"
+    help = "Importa o actualiza una carta desde TCGdex (catálogo en inglés), sin alterar productos"
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "card_id",
-            type=str,
-            help="ID de la carta en TCGdex, por ejemplo: base1-4"
-        )
+        parser.add_argument("card_id", help="ID TCGdex; por ejemplo: base1-4")
 
     def handle(self, *args, **options):
-        card_id = options["card_id"]
-
-        url = f"https://api.tcgdex.net/v2/en/cards/{card_id}"
-
         try:
-            response = urllib.request.urlopen(url)
-            data = json.loads(response.read().decode())
-        except Exception as e:
-            raise CommandError(f"No se pudo obtener la carta: {e}")
-
-        set_data = data["set"]
-
-        card_set, created = Set.objects.get_or_create(
-            tcgdex_id=set_data["id"],
-            defaults={
-                "name": set_data["name"],
-                "logo": set_data.get("logo", "")
-            }
-        )
-
-        card, created = Card.objects.update_or_create(
-            tcgdex_id=data["id"],
-            defaults={
-                "local_id": data["localId"],
-                "name": data["name"],
-                "image": data.get("image", ""),
-                "category": data.get("category", ""),
-                "rarity": data.get("rarity", ""),
-                "illustrator": data.get("illustrator", ""),
-                "set": card_set
-            }
-        )
-
-        if created:
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Carta importada correctamente: {card.name}"
-                )
-            )
-        else:
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Carta actualizada correctamente: {card.name}"
-                )
-            )
+            card, created = import_card(options["card_id"])
+        except CatalogError as exc:
+            raise CommandError(str(exc)) from exc
+        action = "importada" if created else "actualizada"
+        self.stdout.write(self.style.SUCCESS(f"Carta {action}: {card.name} ({card.tcgdex_id})"))
