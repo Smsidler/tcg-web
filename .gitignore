@@ -20,3 +20,9 @@ db.sqlite3
 staticfiles/
 .coverage
 htmlcov/
+
+# User uploaded media
+media/
+
+# Local product images
+images/

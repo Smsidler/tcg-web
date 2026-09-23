@@ -23,6 +23,10 @@ class Card(models.Model):
     local_id = models.CharField(max_length=20)
     name = models.CharField(max_length=200)
     image = models.URLField(blank=True)
+    custom_image = models.ImageField(
+    upload_to="cards/",
+    blank=True,
+    null=True,)
     category = models.CharField(max_length=50, blank=True)
     rarity = models.CharField(max_length=100, blank=True)
     illustrator = models.CharField(max_length=200, blank=True)
@@ -30,14 +34,22 @@ class Card(models.Model):
 
     @property
     def image_url(self):
-        return f"{self.image.rstrip('/')}/high.webp" if self.image else ""
+        if self.custom_image:
+            return self.custom_image.url
+        if self.image:
+            return f"{self.image.rstrip('/')}/high.webp"
+        return ""
 
     @property
     def thumbnail_url(self):
-        return f"{self.image.rstrip('/')}/low.webp" if self.image else ""
+        if self.custom_image:
+            return self.custom_image.url
+        if self.image:
+            return f"{self.image.rstrip('/')}/low.webp"
+        return ""       
 
     def __str__(self):
-        return f"{self.name} ({self.tcgdex_id})"
+            return f"{self.name} ({self.tcgdex_id})"
 
 
 class Product(models.Model):
