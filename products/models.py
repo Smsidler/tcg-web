@@ -24,13 +24,18 @@ class Card(models.Model):
     name = models.CharField(max_length=200)
     image = models.URLField(blank=True)
     custom_image = models.ImageField(
-    upload_to="cards/",
-    blank=True,
-    null=True,)
+        upload_to="cards/",
+        blank=True,
+        null=True,
+    )
     category = models.CharField(max_length=50, blank=True)
     rarity = models.CharField(max_length=100, blank=True)
     illustrator = models.CharField(max_length=200, blank=True)
-    set = models.ForeignKey(Set, on_delete=models.PROTECT, related_name="cards")
+    set = models.ForeignKey(
+        Set,
+        on_delete=models.PROTECT,
+        related_name="cards",
+    )
 
     @property
     def image_url(self):
@@ -46,10 +51,10 @@ class Card(models.Model):
             return self.custom_image.url
         if self.image:
             return f"{self.image.rstrip('/')}/low.webp"
-        return ""       
+        return ""
 
     def __str__(self):
-            return f"{self.name} ({self.tcgdex_id})"
+        return f"{self.name} ({self.tcgdex_id})"
 
 
 class Product(models.Model):
@@ -76,15 +81,37 @@ class Product(models.Model):
         OTHER = "other", "Otra"
 
     card = models.ForeignKey(
-        Card, on_delete=models.PROTECT, related_name="products", null=True, blank=True
+        Card,
+        on_delete=models.PROTECT,
+        related_name="products",
+        null=True,
+        blank=True,
     )
-    sku = models.CharField(max_length=40, unique=True, default=generate_sku)
-    language = models.CharField(max_length=10, choices=Language.choices, default=Language.UNKNOWN)
-    condition = models.CharField(max_length=10, choices=Condition.choices, default=Condition.UNKNOWN)
-    variant = models.CharField(max_length=10, choices=Variant.choices, default=Variant.UNKNOWN)
+    sku = models.CharField(
+        max_length=40,
+        unique=True,
+        default=generate_sku,
+    )
+    language = models.CharField(
+        max_length=10,
+        choices=Language.choices,
+        default=Language.UNKNOWN,
+    )
+    condition = models.CharField(
+        max_length=10,
+        choices=Condition.choices,
+        default=Condition.UNKNOWN,
+    )
+    variant = models.CharField(
+        max_length=10,
+        choices=Variant.choices,
+        default=Variant.UNKNOWN,
+    )
     description = models.TextField(blank=True)
     price = models.DecimalField(
-        max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0"))]
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
     )
     stock = models.PositiveIntegerField(default=0)
     category = models.CharField(max_length=100, blank=True)
@@ -92,9 +119,77 @@ class Product(models.Model):
 
     class Meta:
         constraints = [
-            models.CheckConstraint(condition=models.Q(price__gte=0), name="product_price_nonnegative")
+            models.CheckConstraint(
+                condition=models.Q(price__gte=0),
+                name="product_price_nonnegative",
+            )
         ]
 
     def __str__(self):
         name = self.card.name if self.card else "Producto sin carta"
         return f"{name} · {self.sku}"
+
+
+class Order(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pendiente"
+        PAID = "paid", "Pagado"
+        PREPARING = "preparing", "Preparando"
+        SHIPPED = "shipped", "Enviado"
+        COMPLETED = "completed", "Completado"
+        CANCELLED = "cancelled", "Cancelado"
+
+    name = models.CharField(max_length=200)
+    email = models.EmailField()
+    phone = models.CharField(max_length=30)
+    address = models.CharField(max_length=255)
+    commune = models.CharField(max_length=100)
+    notes = models.TextField(blank=True)
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+
+    stock_restored = models.BooleanField(
+    default=False,
+    editable=False,
+)
+
+    total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Pedido #{self.pk} - {self.name}"
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+        related_name="order_items",
+    )
+    quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+
+    @property
+    def subtotal(self):
+        return self.unit_price * self.quantity
+
+    def __str__(self):
+        return f"{self.product} x {self.quantity}"

@@ -1,0 +1,150 @@
+{% extends 'products/base.html' %}
+{% load product_filters %}
+
+{% block title %}Pedido confirmado | TCG Web{% endblock %}
+
+{% block content %}
+
+<main id="main-content" class="container order-success-page">
+
+    <section class="order-success">
+
+        <div class="success-icon">
+            ✓
+        </div>
+
+        <h1>Pedido confirmado</h1>
+
+        <p>
+            Gracias, {{ order.name }}.
+        </p>
+
+        <p>
+            Tu pedido fue registrado correctamente.
+        </p>
+
+
+        <div class="order-number">
+
+            <span>Número de pedido</span>
+
+            <strong>
+                #{{ order.pk }}
+            </strong>
+
+        </div>
+
+
+        <div class="order-details">
+
+            <h2>Resumen del pedido</h2>
+
+            {% for item in order.items.all %}
+
+                <div class="order-product">
+
+                    {% if item.product.card.thumbnail_url %}
+
+                        <img
+                            src="{{ item.product.card.thumbnail_url }}"
+                            alt="{{ item.product.card.name }}"
+                        >
+
+                    {% endif %}
+
+                    <div>
+
+                        <strong>
+                            {{ item.product.card.name }}
+                        </strong>
+
+                        <p>
+                            {{ item.product.get_language_display }} ·
+                            {{ item.product.get_condition_display }} ·
+                            {{ item.product.get_variant_display }}
+                        </p>
+
+                        <p>
+                            Cantidad: {{ item.quantity }}
+                        </p>
+
+                        <p>
+                            Precio unitario:
+                            {{ item.unit_price|clp }}
+                        </p>
+
+                        <p>
+                            Subtotal:
+                            {{ item.subtotal|clp }}
+                        </p>
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+
+            <div class="order-total">
+
+                <span>Total</span>
+
+                <strong>
+                    {{ order.total|clp }}
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="order-customer">
+
+            <h2>Datos de entrega</h2>
+
+            <p>
+                <strong>Nombre:</strong>
+                {{ order.name }}
+            </p>
+
+            <p>
+                <strong>Email:</strong>
+                {{ order.email }}
+            </p>
+
+            <p>
+                <strong>Teléfono:</strong>
+                {{ order.phone }}
+            </p>
+
+            <p>
+                <strong>Dirección:</strong>
+                {{ order.address }}
+            </p>
+
+            <p>
+                <strong>Comuna:</strong>
+                {{ order.commune }}
+            </p>
+
+            {% if order.notes %}
+
+                <p>
+                    <strong>Notas:</strong>
+                    {{ order.notes }}
+                </p>
+
+            {% endif %}
+
+        </div>
+
+
+        <a href="{% url 'home' %}" class="button button-primary">
+            Volver a la tienda
+        </a>
+
+    </section>
+
+</main>
+
+{% endblock %}

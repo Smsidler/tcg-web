@@ -1,33 +1,140 @@
 {% extends 'products/base.html' %}
 {% load product_filters %}
+
 {% block title %}Carrito | TCG Web{% endblock %}
+
 {% block content %}
 <main id="main-content" class="container cart-page">
+
     <h1>Tu carrito</h1>
-    <p>Agregar productos no reserva existencias. Los precios y la disponibilidad pueden cambiar.</p>
+
+    <p>
+        Agregar productos no reserva existencias.
+        Los precios y la disponibilidad pueden cambiar hasta confirmar el pedido.
+    </p>
+
     {% for item in items %}
-    <article class="cart-item">
-        <a href="{% url 'product_detail' item.product.pk %}" class="cart-image">
-            {% if item.product.card.thumbnail_url %}<img src="{{ item.product.card.thumbnail_url }}" alt="{{ item.product.card.name }}" loading="lazy">{% else %}<span>Sin imagen</span>{% endif %}
-        </a>
-        <div class="cart-item-info">
-            <h2><a href="{% url 'product_detail' item.product.pk %}">{{ item.product.card.name }}</a></h2>
-            <p>{{ item.product.get_language_display }} · {{ item.product.get_condition_display }} · {{ item.product.get_variant_display }}</p>
-            <p>{{ item.product.price|clp }} por unidad</p>
-            {% if not item.available %}<p class="stock-warning" role="alert">El stock cambió: quedan {{ item.product.stock }} unidades. Ajusta la cantidad o elimina el producto.</p>{% endif %}
+        <article class="cart-item">
+
+            <a href="{% url 'product_detail' item.product.pk %}" class="cart-image">
+                {% if item.product.card.thumbnail_url %}
+                    <img
+                        src="{{ item.product.card.thumbnail_url }}"
+                        alt="{{ item.product.card.name }}"
+                        loading="lazy"
+                    >
+                {% else %}
+                    <span>Sin imagen</span>
+                {% endif %}
+            </a>
+
+            <div class="cart-item-info">
+                <h2>
+                    <a href="{% url 'product_detail' item.product.pk %}">
+                        {{ item.product.card.name }}
+                    </a>
+                </h2>
+
+                <p>
+                    {{ item.product.get_language_display }} ·
+                    {{ item.product.get_condition_display }} ·
+                    {{ item.product.get_variant_display }}
+                </p>
+
+                <p>{{ item.product.price|clp }} por unidad</p>
+
+                {% if not item.available %}
+                    <p class="stock-warning" role="alert">
+                        El stock cambió: quedan {{ item.product.stock }} unidades.
+                        Ajusta la cantidad o elimina el producto.
+                    </p>
+                {% endif %}
+            </div>
+
+            <form
+                action="{% url 'cart_update' item.product.pk %}"
+                method="post"
+                class="cart-quantity"
+            >
+                {% csrf_token %}
+
+                <label for="quantity-{{ item.product.pk }}">
+                    Cantidad
+                </label>
+
+                <input
+                    id="quantity-{{ item.product.pk }}"
+                    type="number"
+                    name="quantity"
+                    min="1"
+                    max="9999"
+                    value="{{ item.quantity }}"
+                    required
+                >
+
+                <button type="submit" class="button button-secondary">
+                    Actualizar
+                </button>
+            </form>
+
+            <div class="cart-item-total">
+
+                <strong>{{ item.subtotal|clp }}</strong>
+
+                <form
+                    action="{% url 'cart_remove' item.product.pk %}"
+                    method="post"
+                >
+                    {% csrf_token %}
+
+                    <button
+                        type="submit"
+                        class="remove-button"
+                        aria-label="Quitar {{ item.product.card.name }} del carrito"
+                    >
+                        Quitar
+                    </button>
+                </form>
+
+            </div>
+
+        </article>
+
+    {% empty %}
+
+        <div class="empty-message">
+            <h2>Tu carrito está vacío</h2>
+            <p>Explora el catálogo para agregar cartas.</p>
         </div>
-        <form action="{% url 'cart_update' item.product.pk %}" method="post" class="cart-quantity">
-            {% csrf_token %}
-            <label for="quantity-{{ item.product.pk }}">Cantidad</label>
-            <input id="quantity-{{ item.product.pk }}" type="number" name="quantity" min="1" max="9999" value="{{ item.quantity }}" required>
-            <button type="submit" class="button button-secondary">Actualizar</button>
-        </form>
-        <div class="cart-item-total"><strong>{{ item.subtotal|clp }}</strong>
-            <form action="{% url 'cart_remove' item.product.pk %}" method="post">{% csrf_token %}<button type="submit" class="remove-button" aria-label="Quitar {{ item.product.card.name }} del carrito">Quitar</button></form>
+
+    {% endfor %}
+
+
+    {% if items %}
+
+        <div class="cart-summary">
+
+            <p>
+                Total:
+                <strong>{{ total|clp }}</strong>
+            </p>
+
+            <p>
+                El stock se comprobará nuevamente antes de confirmar el pedido.
+            </p>
+
+            <a href="{% url 'checkout' %}" class="button button-primary">
+                Continuar al checkout
+            </a>
+
         </div>
-    </article>
-    {% empty %}<div class="empty-message"><h2>Tu carrito está vacío</h2><p>Explora el catálogo para agregar cartas.</p></div>{% endfor %}
-    {% if items %}<div class="cart-summary"><p>Total de productos: <strong>{{ total|clp }}</strong></p><p>La compra y el pago en línea todavía no están habilitados.</p></div>{% endif %}
-    <a href="{% url 'home' %}#cards" class="button button-primary">Seguir explorando</a>
+
+    {% endif %}
+
+
+    <a href="{% url 'home' %}#cards" class="button button-secondary">
+        Seguir explorando
+    </a>
+
 </main>
 {% endblock %}

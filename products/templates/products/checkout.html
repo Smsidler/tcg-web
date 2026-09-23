@@ -1,0 +1,207 @@
+{% extends 'products/base.html' %}
+{% load product_filters %}
+
+{% block title %}Checkout | TCG Web{% endblock %}
+
+{% block content %}
+
+<main id="main-content" class="container checkout-page">
+
+    <h1>Finalizar pedido</h1>
+
+    <p>
+        Completa tus datos para confirmar el pedido.
+    </p>
+
+    <div class="checkout-layout">
+
+        <section class="checkout-form-section">
+
+            <h2>Datos de contacto y entrega</h2>
+
+            <form method="post" class="checkout-form">
+
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="form-errors" role="alert">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+
+                <div class="form-group">
+
+                    <label for="{{ form.name.id_for_label }}">
+                        {{ form.name.label }}
+                    </label>
+
+                    {{ form.name }}
+
+                    {% for error in form.name.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="{{ form.email.id_for_label }}">
+                        {{ form.email.label }}
+                    </label>
+
+                    {{ form.email }}
+
+                    {% for error in form.email.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="{{ form.phone.id_for_label }}">
+                        {{ form.phone.label }}
+                    </label>
+
+                    {{ form.phone }}
+
+                    {% for error in form.phone.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="{{ form.address.id_for_label }}">
+                        {{ form.address.label }}
+                    </label>
+
+                    {{ form.address }}
+
+                    {% for error in form.address.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="{{ form.commune.id_for_label }}">
+                        {{ form.commune.label }}
+                    </label>
+
+                    {{ form.commune }}
+
+                    {% for error in form.commune.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="{{ form.notes.id_for_label }}">
+                        {{ form.notes.label }}
+                    </label>
+
+                    {{ form.notes }}
+
+                    {% for error in form.notes.errors %}
+                        <p class="form-error">{{ error }}</p>
+                    {% endfor %}
+
+                </div>
+
+
+                <button type="submit" class="button button-primary">
+                    Confirmar pedido
+                </button>
+
+            </form>
+
+        </section>
+
+
+        <aside class="checkout-summary">
+
+            <h2>Resumen del pedido</h2>
+
+            {% for item in items %}
+
+                <div class="checkout-product">
+
+                    {% if item.product.card.thumbnail_url %}
+
+                        <img
+                            src="{{ item.product.card.thumbnail_url }}"
+                            alt="{{ item.product.card.name }}"
+                            loading="lazy"
+                        >
+
+                    {% endif %}
+
+                    <div>
+
+                        <strong>
+                            {{ item.product.card.name }}
+                        </strong>
+
+                        <p>
+                            {{ item.product.get_language_display }} ·
+                            {{ item.product.get_condition_display }} ·
+                            {{ item.product.get_variant_display }}
+                        </p>
+
+                        <p>
+                            Cantidad: {{ item.quantity }}
+                        </p>
+
+                        <p>
+                            {{ item.subtotal|clp }}
+                        </p>
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+
+            <hr>
+
+
+            <div class="checkout-total">
+
+                <span>Total</span>
+
+                <strong>
+                    {{ total|clp }}
+                </strong>
+
+            </div>
+
+
+            <p class="checkout-stock-note">
+                El stock y los precios se validarán nuevamente
+                al confirmar el pedido.
+            </p>
+
+        </aside>
+
+    </div>
+
+
+    <a href="{% url 'cart_detail' %}" class="button button-secondary">
+        Volver al carrito
+    </a>
+
+</main>
+
+{% endblock %}

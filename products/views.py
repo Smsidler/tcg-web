@@ -1,12 +1,14 @@
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .cart import cart_items, read_cart, save_cart
-from .forms import CartQuantityForm
-from .models import Card, Product, Set
+from .cart import CART_KEY, cart_items, read_cart, save_cart
+from .forms import CartQuantityForm, CheckoutForm
+from .models import Card, Order, OrderItem, Product, Set
+
 
 SORT_OPTIONS = {
     "newest": ("-created_at", "-pk"),
@@ -21,84 +23,332 @@ def home(request):
     set_id = request.GET.get("set", "").strip()
     in_stock = request.GET.get("in_stock") == "1"
     sort = request.GET.get("sort", "newest")
+
     if sort not in SORT_OPTIONS:
         sort = "newest"
-    products = Product.objects.select_related("card", "card__set").filter(card__isnull=False)
+
+    products = (
+        Product.objects
+        .select_related("card", "card__set")
+        .filter(card__isnull=False)
+    )
+
     if query:
         products = products.filter(
-            Q(card__name__icontains=query) | Q(card__set__name__icontains=query)
-            | Q(card__rarity__icontains=query) | Q(card__local_id__icontains=query)
+            Q(card__name__icontains=query)
+            | Q(card__set__name__icontains=query)
+            | Q(card__rarity__icontains=query)
+            | Q(card__local_id__icontains=query)
             | Q(sku__icontains=query)
         )
+
     if set_id:
         products = products.filter(card__set__tcgdex_id=set_id)
+
     if in_stock:
         products = products.filter(stock__gt=0)
-    page = Paginator(products.order_by(*SORT_OPTIONS[sort]), 12).get_page(request.GET.get("page"))
+
+    page = Paginator(
+        products.order_by(*SORT_OPTIONS[sort]),
+        12,
+    ).get_page(request.GET.get("page"))
+
     params = request.GET.copy()
     params.pop("page", None)
+
     context = {
-        "products": page, "page_obj": page, "query": query,
-        "selected_set": set_id, "in_stock": in_stock, "sort": sort,
-        "sets": Set.objects.filter(cards__products__isnull=False).distinct().order_by("name"),
+        "products": page,
+        "page_obj": page,
+        "query": query,
+        "selected_set": set_id,
+        "in_stock": in_stock,
+        "sort": sort,
+        "sets": (
+            Set.objects
+            .filter(cards__products__isnull=False)
+            .distinct()
+            .order_by("name")
+        ),
         "pagination_query": params.urlencode(),
     }
+
     return render(request, "products/home.html", context)
 
 
 def product_detail(request, pk):
     product = get_object_or_404(
-        Product.objects.select_related("card", "card__set"), pk=pk, card__isnull=False
+        Product.objects.select_related("card", "card__set"),
+        pk=pk,
+        card__isnull=False,
     )
-    variants = Product.objects.filter(card=product.card).exclude(pk=pk).order_by("price", "pk")
-    return render(request, "products/product_detail.html", {"product": product, "variants": variants})
+
+    variants = (
+        Product.objects
+        .filter(card=product.card)
+        .exclude(pk=pk)
+        .order_by("price", "pk")
+    )
+
+    return render(
+        request,
+        "products/product_detail.html",
+        {
+            "product": product,
+            "variants": variants,
+        },
+    )
 
 
 def legacy_card_detail(request, tcgdex_id):
     """Keep existing card links usable without selecting an arbitrary variant."""
-    card = get_object_or_404(Card, tcgdex_id=tcgdex_id)
-    products = Product.objects.select_related("card", "card__set").filter(card=card).order_by("price", "pk")
+
+    card = get_object_or_404(
+        Card,
+        tcgdex_id=tcgdex_id,
+    )
+
+    products = (
+        Product.objects
+        .select_related("card", "card__set")
+        .filter(card=card)
+        .order_by("price", "pk")
+    )
+
     if products.count() == 1:
-        return redirect("product_detail", pk=products.first().pk)
-    return render(request, "products/card_products.html", {"card": card, "products": products})
+        return redirect(
+            "product_detail",
+            pk=products.first().pk,
+        )
+
+    return render(
+        request,
+        "products/card_products.html",
+        {
+            "card": card,
+            "products": products,
+        },
+    )
 
 
 def cart_detail(request):
     items, total = cart_items(request.session)
-    return render(request, "products/cart.html", {"items": items, "total": total})
+
+    return render(
+        request,
+        "products/cart.html",
+        {
+            "items": items,
+            "total": total,
+        },
+    )
 
 
 def change_cart(request, pk, *, add):
-    product = get_object_or_404(Product, pk=pk, card__isnull=False)
+    product = get_object_or_404(
+        Product,
+        pk=pk,
+        card__isnull=False,
+    )
+
     form = CartQuantityForm(request.POST)
+
     if not form.is_valid():
-        messages.error(request, "Ingresa una cantidad entera entre 1 y 9999.")
+        messages.error(
+            request,
+            "Ingresa una cantidad entera entre 1 y 9999.",
+        )
         return redirect("cart_detail")
+
     cart = read_cart(request.session)
-    quantity = form.cleaned_data["quantity"] + (cart.get(str(pk), 0) if add else 0)
+
+    quantity = form.cleaned_data["quantity"]
+
+    if add:
+        quantity += cart.get(str(pk), 0)
+
     if quantity > product.stock or quantity > 9999:
-        messages.error(request, f"Stock insuficiente: quedan {product.stock} unidades de {product.card.name}.")
+        messages.error(
+            request,
+            (
+                f"Stock insuficiente: quedan "
+                f"{product.stock} unidades de {product.card.name}."
+            ),
+        )
         return redirect("cart_detail")
+
     cart[str(pk)] = quantity
     save_cart(request.session, cart)
-    messages.success(request, "Carrito actualizado.")
+
+    messages.success(
+        request,
+        "Carrito actualizado.",
+    )
+
     return redirect("cart_detail")
 
 
 @require_POST
 def cart_add(request, pk):
-    return change_cart(request, pk, add=True)
+    return change_cart(
+        request,
+        pk,
+        add=True,
+    )
 
 
 @require_POST
 def cart_update(request, pk):
-    return change_cart(request, pk, add=False)
+    return change_cart(
+        request,
+        pk,
+        add=False,
+    )
 
 
 @require_POST
 def cart_remove(request, pk):
     cart = read_cart(request.session)
+
     cart.pop(str(pk), None)
+
     save_cart(request.session, cart)
-    messages.success(request, "Producto eliminado del carrito.")
+
+    messages.success(
+        request,
+        "Producto eliminado del carrito.",
+    )
+
     return redirect("cart_detail")
+
+
+def checkout(request):
+    items, total = cart_items(request.session)
+
+    if not items:
+        messages.error(
+            request,
+            "Tu carrito está vacío.",
+        )
+        return redirect("cart_detail")
+
+    if request.method == "POST":
+        form = CheckoutForm(request.POST)
+
+        if form.is_valid():
+            cart = read_cart(request.session)
+
+            try:
+                with transaction.atomic():
+                    product_ids = [
+                        int(pk)
+                        for pk in cart.keys()
+                    ]
+
+                    products = {
+                        product.pk: product
+                        for product in (
+                            Product.objects
+                            .select_for_update()
+                            .select_related("card")
+                            .filter(
+                                pk__in=product_ids,
+                                card__isnull=False,
+                            )
+                        )
+                    }
+
+                    if len(products) != len(product_ids):
+                        raise ValueError(
+                            "Uno de los productos ya no está disponible."
+                        )
+
+                    order_total = 0
+
+                    # Revalidamos stock y calculamos el total
+                    # usando los datos actuales de PostgreSQL.
+                    for product_id in product_ids:
+                        product = products[product_id]
+                        quantity = cart[str(product_id)]
+
+                        if quantity > product.stock:
+                            raise ValueError(
+                                (
+                                    f"Stock insuficiente para "
+                                    f"{product.card.name}. "
+                                    f"Quedan {product.stock} unidades."
+                                )
+                            )
+
+                        order_total += (
+                            product.price * quantity
+                        )
+
+                    # Creamos el pedido.
+                    order = form.save(commit=False)
+                    order.total = order_total
+                    order.save()
+
+                    # Guardamos cada producto comprado y
+                    # descontamos el inventario.
+                    for product_id in product_ids:
+                        product = products[product_id]
+                        quantity = cart[str(product_id)]
+
+                        OrderItem.objects.create(
+                            order=order,
+                            product=product,
+                            quantity=quantity,
+                            unit_price=product.price,
+                        )
+
+                        product.stock -= quantity
+                        product.save(
+                            update_fields=["stock"]
+                        )
+
+            except ValueError as exc:
+                messages.error(
+                    request,
+                    str(exc),
+                )
+                return redirect("cart_detail")
+
+            # Vaciar el carrito solamente después de que
+            # la transacción haya terminado correctamente.
+            request.session[CART_KEY] = {}
+            request.session.modified = True
+
+            return redirect(
+                "order_success",
+                pk=order.pk,
+            )
+
+    else:
+        form = CheckoutForm()
+
+    return render(
+        request,
+        "products/checkout.html",
+        {
+            "form": form,
+            "items": items,
+            "total": total,
+        },
+    )
+
+
+def order_success(request, pk):
+    order = get_object_or_404(
+        Order.objects.prefetch_related(
+            "items__product__card"
+        ),
+        pk=pk,
+    )
+
+    return render(
+        request,
+        "products/order_success.html",
+        {
+            "order": order,
+        },
+    )
