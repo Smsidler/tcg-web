@@ -47,9 +47,10 @@ urlpatterns = [
         name="checkout",
     ),
 
-    # Confirmación del pedido
+    
+    # Confirmación segura del pedido
     path(
-        "orders/<int:pk>/success/",
+        "orders/<uuid:public_id>/success/",
         views.order_success,
         name="order_success",
     ),

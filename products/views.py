@@ -18,6 +18,11 @@ SORT_OPTIONS = {
 }
 
 
+# Clave utilizada para guardar en la sesión los pedidos
+# que fueron creados desde este navegador.
+ORDER_SESSION_KEY = "accessible_orders"
+
+
 def home(request):
     query = request.GET.get("q", "").strip()
     set_id = request.GET.get("set", "").strip()
@@ -43,7 +48,9 @@ def home(request):
         )
 
     if set_id:
-        products = products.filter(card__set__tcgdex_id=set_id)
+        products = products.filter(
+            card__set__tcgdex_id=set_id
+        )
 
     if in_stock:
         products = products.filter(stock__gt=0)
@@ -72,12 +79,19 @@ def home(request):
         "pagination_query": params.urlencode(),
     }
 
-    return render(request, "products/home.html", context)
+    return render(
+        request,
+        "products/home.html",
+        context,
+    )
 
 
 def product_detail(request, pk):
     product = get_object_or_404(
-        Product.objects.select_related("card", "card__set"),
+        Product.objects.select_related(
+            "card",
+            "card__set",
+        ),
         pk=pk,
         card__isnull=False,
     )
@@ -100,7 +114,7 @@ def product_detail(request, pk):
 
 
 def legacy_card_detail(request, tcgdex_id):
-    """Keep existing card links usable without selecting an arbitrary variant."""
+    """Mantiene funcionando los enlaces antiguos de cartas."""
 
     card = get_object_or_404(
         Card,
@@ -171,7 +185,8 @@ def change_cart(request, pk, *, add):
             request,
             (
                 f"Stock insuficiente: quedan "
-                f"{product.stock} unidades de {product.card.name}."
+                f"{product.stock} unidades de "
+                f"{product.card.name}."
             ),
         )
         return redirect("cart_detail")
@@ -264,8 +279,8 @@ def checkout(request):
 
                     order_total = 0
 
-                    # Revalidamos stock y calculamos el total
-                    # usando los datos actuales de PostgreSQL.
+                    # Revalidamos el stock y calculamos
+                    # nuevamente el total desde PostgreSQL.
                     for product_id in product_ids:
                         product = products[product_id]
                         quantity = cart[str(product_id)]
@@ -288,8 +303,8 @@ def checkout(request):
                     order.total = order_total
                     order.save()
 
-                    # Guardamos cada producto comprado y
-                    # descontamos el inventario.
+                    # Creamos los OrderItem y descontamos
+                    # el inventario.
                     for product_id in product_ids:
                         product = products[product_id]
                         quantity = cart[str(product_id)]
@@ -302,6 +317,7 @@ def checkout(request):
                         )
 
                         product.stock -= quantity
+
                         product.save(
                             update_fields=["stock"]
                         )
@@ -313,14 +329,29 @@ def checkout(request):
                 )
                 return redirect("cart_detail")
 
-            # Vaciar el carrito solamente después de que
-            # la transacción haya terminado correctamente.
+            # La transacción terminó correctamente.
+            # Ahora podemos vaciar el carrito.
             request.session[CART_KEY] = {}
+
+            # Guardamos el UUID del pedido en la sesión.
+            # Esto permite que únicamente el navegador
+            # que creó el pedido pueda acceder a él.
+            accessible_orders = request.session.get(
+                ORDER_SESSION_KEY,
+                [],
+            )
+
+            order_public_id = str(order.public_id)
+
+            if order_public_id not in accessible_orders:
+                accessible_orders.append(order_public_id)
+
+            request.session[ORDER_SESSION_KEY] = accessible_orders
             request.session.modified = True
 
             return redirect(
                 "order_success",
-                pk=order.pk,
+                public_id=order.public_id,
             )
 
     else:
@@ -337,12 +368,29 @@ def checkout(request):
     )
 
 
-def order_success(request, pk):
+def order_success(request, public_id):
+    # Primero verificamos que este navegador haya creado
+    # el pedido que está intentando consultar.
+    accessible_orders = request.session.get(
+        ORDER_SESSION_KEY,
+        [],
+    )
+
+    if str(public_id) not in accessible_orders:
+        # Respondemos como si el pedido no existiera.
+        # De esta forma tampoco revelamos información
+        # sobre la existencia de otros pedidos.
+        get_object_or_404(
+            Order,
+            public_id=public_id,
+            pk__in=[],
+        )
+
     order = get_object_or_404(
         Order.objects.prefetch_related(
             "items__product__card"
         ),
-        pk=pk,
+        public_id=public_id,
     )
 
     return render(
