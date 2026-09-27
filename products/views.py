@@ -1,13 +1,13 @@
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .cart import CART_KEY, cart_items, read_cart, save_cart
 from .forms import CartQuantityForm, CheckoutForm
-from .models import Card, Order, OrderItem, Product, Set
+from .models import Card, Order, Product, Set
+from .services.orders import OrderError, create_order
 
 
 SORT_OPTIONS = {
@@ -253,76 +253,12 @@ def checkout(request):
             cart = read_cart(request.session)
 
             try:
-                with transaction.atomic():
-                    product_ids = [
-                        int(pk)
-                        for pk in cart.keys()
-                    ]
+                order = create_order(
+                    cleaned_data=form.cleaned_data,
+                    cart=cart,
+                )
 
-                    products = {
-                        product.pk: product
-                        for product in (
-                            Product.objects
-                            .select_for_update()
-                            .select_related("card")
-                            .filter(
-                                pk__in=product_ids,
-                                card__isnull=False,
-                            )
-                        )
-                    }
-
-                    if len(products) != len(product_ids):
-                        raise ValueError(
-                            "Uno de los productos ya no está disponible."
-                        )
-
-                    order_total = 0
-
-                    # Revalidamos el stock y calculamos
-                    # nuevamente el total desde PostgreSQL.
-                    for product_id in product_ids:
-                        product = products[product_id]
-                        quantity = cart[str(product_id)]
-
-                        if quantity > product.stock:
-                            raise ValueError(
-                                (
-                                    f"Stock insuficiente para "
-                                    f"{product.card.name}. "
-                                    f"Quedan {product.stock} unidades."
-                                )
-                            )
-
-                        order_total += (
-                            product.price * quantity
-                        )
-
-                    # Creamos el pedido.
-                    order = form.save(commit=False)
-                    order.total = order_total
-                    order.save()
-
-                    # Creamos los OrderItem y descontamos
-                    # el inventario.
-                    for product_id in product_ids:
-                        product = products[product_id]
-                        quantity = cart[str(product_id)]
-
-                        OrderItem.objects.create(
-                            order=order,
-                            product=product,
-                            quantity=quantity,
-                            unit_price=product.price,
-                        )
-
-                        product.stock -= quantity
-
-                        product.save(
-                            update_fields=["stock"]
-                        )
-
-            except ValueError as exc:
+            except OrderError as exc:
                 messages.error(
                     request,
                     str(exc),

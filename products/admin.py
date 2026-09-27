@@ -1,9 +1,9 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.utils.html import format_html
 
 from .models import Card, Order, OrderItem, Product, Set
+from .services.orders import cancel_order, reactivate_order
 
 
 # =========================================================
@@ -376,13 +376,12 @@ class OrderAdmin(admin.ModelAdmin):
         )
 
     # =====================================================
-    # CONTROL AUTOMÁTICO DEL INVENTARIO
+    # CAMBIOS DE ESTADO
     # =====================================================
 
     def save_model(self, request, obj, form, change):
-
-        # Si se está creando un pedido nuevo desde el admin,
-        # dejamos que Django lo guarde normalmente.
+        # Si se crea manualmente un pedido desde el admin,
+        # mantenemos por ahora el comportamiento existente.
         if not change:
             super().save_model(
                 request,
@@ -392,206 +391,71 @@ class OrderAdmin(admin.ModelAdmin):
             )
             return
 
-        with transaction.atomic():
+        current_order = Order.objects.get(pk=obj.pk)
 
-            # Bloqueamos el pedido mientras procesamos
-            # el cambio de estado.
-            current_order = (
-                Order.objects
-                .select_for_update()
-                .get(pk=obj.pk)
-            )
+        old_status = current_order.status
+        new_status = obj.status
 
-            old_status = current_order.status
-            new_status = obj.status
+        # -------------------------------------------------
+        # CANCELAR PEDIDO
+        # -------------------------------------------------
 
-            # =================================================
-            # CASO 1:
-            # CANCELAR UN PEDIDO
-            # =================================================
+        if (
+            new_status == Order.Status.CANCELLED
+            and old_status != Order.Status.CANCELLED
+        ):
+            cancel_order(current_order)
 
-            if (
-                new_status == Order.Status.CANCELLED
-                and not current_order.stock_restored
-            ):
+            obj.status = Order.Status.CANCELLED
+            obj.stock_restored = True
 
-                # Obtenemos los productos y cantidades
-                # que pertenecen al pedido.
-                items = list(
-                    current_order.items.all()
-                )
-
-                product_ids = [
-                    item.product_id
-                    for item in items
-                ]
-
-                # IMPORTANTE:
-                # Bloqueamos directamente Product.
-                #
-                # No usamos select_related("card") aquí
-                # porque Product.card puede ser NULL y
-                # PostgreSQL no permite FOR UPDATE sobre
-                # el lado nullable de ese OUTER JOIN.
-                products = {
-                    product.pk: product
-                    for product in (
-                        Product.objects
-                        .select_for_update()
-                        .filter(pk__in=product_ids)
-                    )
-                }
-
-                # Restauramos las unidades del pedido.
-                for item in items:
-
-                    product = products.get(
-                        item.product_id
-                    )
-
-                    if product is None:
-                        raise ValidationError(
-                            (
-                                "No se pudo restaurar el stock "
-                                "porque uno de los productos "
-                                "del pedido ya no existe."
-                            )
-                        )
-
-                    product.stock += item.quantity
-
-                    product.save(
-                        update_fields=["stock"]
-                    )
-
-                # Marcamos que este pedido YA devolvió
-                # sus unidades.
-                #
-                # Esto evita que guardar nuevamente el
-                # pedido como Cancelado vuelva a sumar stock.
-                obj.stock_restored = True
-
-                messages.success(
-                    request,
-                    (
-                        "Pedido cancelado. "
-                        "El stock fue restaurado automáticamente."
-                    ),
-                )
-
-            # =================================================
-            # CASO 2:
-            # REACTIVAR UN PEDIDO CANCELADO
-            # =================================================
-
-            elif (
-                old_status == Order.Status.CANCELLED
-                and new_status != Order.Status.CANCELLED
-                and current_order.stock_restored
-            ):
-
-                items = list(
-                    current_order.items.all()
-                )
-
-                product_ids = [
-                    item.product_id
-                    for item in items
-                ]
-
-                # Bloqueamos los productos involucrados.
-                #
-                # Aquí tampoco usamos select_related("card")
-                # junto con select_for_update.
-                products = {
-                    product.pk: product
-                    for product in (
-                        Product.objects
-                        .select_for_update()
-                        .filter(pk__in=product_ids)
-                    )
-                }
-
-                # ---------------------------------------------
-                # PRIMERO:
-                # comprobamos que TODOS tengan stock.
-                # ---------------------------------------------
-
-                for item in items:
-
-                    product = products.get(
-                        item.product_id
-                    )
-
-                    if product is None:
-                        raise ValidationError(
-                            (
-                                "No se puede reactivar el pedido "
-                                "porque uno de sus productos "
-                                "ya no está disponible."
-                            )
-                        )
-
-                    if product.stock < item.quantity:
-
-                        # Consultamos el nombre de la carta
-                        # solamente si necesitamos mostrar
-                        # el error.
-                        card_name = (
-                            product.card.name
-                            if product.card
-                            else product.sku
-                        )
-
-                        raise ValidationError(
-                            (
-                                "No se puede reactivar el pedido. "
-                                f"{card_name} tiene "
-                                f"{product.stock} unidades disponibles "
-                                "y el pedido necesita "
-                                f"{item.quantity}."
-                            )
-                        )
-
-                # ---------------------------------------------
-                # SEGUNDO:
-                # descontamos las unidades.
-                #
-                # Solo llegamos aquí si TODO el pedido
-                # tiene inventario suficiente.
-                # ---------------------------------------------
-
-                for item in items:
-
-                    product = products[
-                        item.product_id
-                    ]
-
-                    product.stock -= item.quantity
-
-                    product.save(
-                        update_fields=["stock"]
-                    )
-
-                # El inventario vuelve a estar comprometido
-                # por este pedido.
-                obj.stock_restored = False
-
-                messages.success(
-                    request,
-                    (
-                        "Pedido reactivado. "
-                        "El stock fue descontado nuevamente."
-                    ),
-                )
-
-            # =================================================
-            # GUARDAR PEDIDO
-            # =================================================
-
-            super().save_model(
+            messages.success(
                 request,
-                obj,
-                form,
-                change,
+                (
+                    "Pedido cancelado. "
+                    "El stock fue restaurado automáticamente."
+                ),
             )
+
+            return
+
+        # -------------------------------------------------
+        # REACTIVAR PEDIDO CANCELADO
+        # -------------------------------------------------
+
+        if (
+            old_status == Order.Status.CANCELLED
+            and new_status != Order.Status.CANCELLED
+        ):
+            try:
+                updated_order = reactivate_order(
+                    current_order,
+                    new_status,
+                )
+
+            except ValidationError:
+                raise
+
+            obj.status = updated_order.status
+            obj.stock_restored = updated_order.stock_restored
+
+            messages.success(
+                request,
+                (
+                    "Pedido reactivado. "
+                    "El stock fue descontado nuevamente."
+                ),
+            )
+
+            return
+
+        # -------------------------------------------------
+        # CAMBIO NORMAL DE ESTADO
+        # -------------------------------------------------
+
+        super().save_model(
+            request,
+            obj,
+            form,
+            change,
+        )

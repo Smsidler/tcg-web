@@ -17,6 +17,7 @@ from django.urls import reverse
 
 from .admin import CardAdmin, ProductAdmin
 from .models import Card, Order, OrderItem, Product, Set
+from .services.orders import cancel_order, reactivate_order
 from .services.tcgdex import CatalogError, fetch_json, import_card
 from .templatetags.product_filters import clp
 
@@ -464,6 +465,108 @@ class CheckoutTests(ProductFixture):
             response = self.client.get(numeric_url)
 
             self.assertEqual(response.status_code, 404)
+
+
+class OrderServiceTests(ProductFixture):
+    def create_order_with_item(
+        self,
+        *,
+        quantity=2,
+        status=Order.Status.PENDING,
+        stock_restored=False,
+    ):
+        order = Order.objects.create(
+            name="Cliente Test",
+            email="cliente@example.com",
+            phone="+56912345678",
+            address="Av. Siempre Viva 123",
+            commune="Santiago",
+            total=Decimal(str(self.product.price)) * quantity,
+            status=status,
+            stock_restored=stock_restored,
+        )
+
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=quantity,
+            unit_price=self.product.price,
+        )
+
+        return order
+
+    def test_cancel_order_restores_stock(self):
+        self.product.stock = 2
+        self.product.save(update_fields=["stock"])
+
+        order = self.create_order_with_item(quantity=2)
+
+        cancel_order(order)
+
+        self.product.refresh_from_db()
+        order.refresh_from_db()
+
+        self.assertEqual(self.product.stock, 4)
+        self.assertEqual(order.status, Order.Status.CANCELLED)
+        self.assertTrue(order.stock_restored)
+
+    def test_cancel_order_does_not_restore_stock_twice(self):
+        self.product.stock = 2
+        self.product.save(update_fields=["stock"])
+
+        order = self.create_order_with_item(quantity=2)
+
+        cancel_order(order)
+        cancel_order(order)
+
+        self.product.refresh_from_db()
+        order.refresh_from_db()
+
+        self.assertEqual(self.product.stock, 4)
+        self.assertEqual(order.status, Order.Status.CANCELLED)
+        self.assertTrue(order.stock_restored)
+
+    def test_reactivate_order_reduces_stock_again(self):
+        order = self.create_order_with_item(
+            quantity=2,
+            status=Order.Status.CANCELLED,
+            stock_restored=True,
+        )
+
+        reactivate_order(
+            order,
+            Order.Status.PENDING,
+        )
+
+        self.product.refresh_from_db()
+        order.refresh_from_db()
+
+        self.assertEqual(self.product.stock, 2)
+        self.assertEqual(order.status, Order.Status.PENDING)
+        self.assertFalse(order.stock_restored)
+
+    def test_reactivate_order_fails_when_stock_is_insufficient(self):
+        self.product.stock = 1
+        self.product.save(update_fields=["stock"])
+
+        order = self.create_order_with_item(
+            quantity=2,
+            status=Order.Status.CANCELLED,
+            stock_restored=True,
+        )
+
+        with self.assertRaises(ValidationError):
+            reactivate_order(
+                order,
+                Order.Status.PENDING,
+            )
+
+        self.product.refresh_from_db()
+        order.refresh_from_db()
+
+        self.assertEqual(self.product.stock, 1)
+        self.assertEqual(order.status, Order.Status.CANCELLED)
+        self.assertTrue(order.stock_restored)
 
 
 class ExistingInventoryMigrationTests(TransactionTestCase):
