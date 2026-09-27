@@ -1,139 +1,502 @@
 # TCG Web
 
-Tienda de cartas Pokémon TCG con Django 5.2, SQLite y catálogo de TCGdex.
-`Set` y `Card` guardan información externa; `Product` mantiene SKU, idioma,
-condición, variante, descripción, precio y stock propios de la tienda.
+Tienda web de cartas Pokémon TCG desarrollada con Django.
+
+El proyecto utiliza **TCGdex** como fuente externa del catálogo de cartas, mientras que la información comercial de cada producto —como SKU, idioma, condición, variante, precio y stock— se administra de forma independiente dentro de la tienda.
+
+La aplicación utiliza **PostgreSQL en Neon** como base de datos y almacenamiento de imágenes mediante un servicio **S3-compatible / Neon Object Storage**.
 
 ## Funcionalidades
 
-- Importación repetible de cartas y sets, sin duplicados ni cambios de precio/stock.
-- Catálogo con búsqueda, filtros por set y disponibilidad, orden y 12 productos por página.
-- Detalle por producto, selector de otras versiones y compatibilidad con enlaces antiguos de cartas.
-- Carrito por sesión: agregar, actualizar y quitar; precios y stock consultados en el servidor.
-- Administración con imágenes opcionales, búsqueda por SKU y filtros por versión.
-- Protección del catálogo frente a borrados accidentales y restricción de precios no negativos.
-- Pruebas automáticas y GitHub Actions.
+- Importación de cartas y sets desde TCGdex.
+- Importaciones repetibles sin duplicar cartas ni alterar precio o stock.
+- Catálogo con búsqueda de productos.
+- Filtro por set.
+- Filtro por disponibilidad.
+- Orden por fecha, precio y nombre.
+- Paginación de productos.
+- Detalle individual de cada producto.
+- Varias versiones comerciales de una misma carta.
+- Carrito basado en sesión.
+- Validación de cantidades y stock en el servidor.
+- Checkout.
+- Creación de pedidos.
+- Items de pedido con snapshot del precio de compra.
+- Descuento automático de inventario al crear un pedido.
+- Restauración automática del stock al cancelar un pedido.
+- Nuevo descuento del stock al reactivar un pedido cancelado.
+- Operaciones de inventario protegidas mediante transacciones.
+- Confirmación de pedidos mediante UUID público.
+- Protección de la página de confirmación mediante sesión.
+- Administración de pedidos desde Django Admin.
+- Imágenes personalizadas para cartas.
+- Object Storage compatible con S3.
+- Protección del catálogo frente a borrados accidentales.
+- Validación de precios no negativos.
+- Suite automatizada de 45 tests.
 
-El carrito **no reserva ni descuenta stock**. Pedidos, checkout y pagos aún no están
-implementados. No se deben aceptar ventas desde este flujo hasta completar esa etapa.
+> La creación de pedidos y el control de inventario ya están implementados. La integración con una pasarela de pago todavía está pendiente, por lo que el proyecto no debe considerarse una tienda con pagos online completos hasta incorporar y verificar ese flujo.
 
-## Instalación local (Windows / PowerShell)
+---
 
-Requiere Python 3.12. Desde la carpeta del repositorio:
+## Tecnologías
+
+- Python
+- Django 5.2
+- PostgreSQL
+- Neon
+- Neon Object Storage / S3
+- TCGdex API
+- Pillow
+- django-storages
+- boto3
+- dj-database-url
+
+---
+
+## Arquitectura del catálogo
+
+El proyecto separa los datos externos del catálogo de los datos comerciales de la tienda.
+
+### Set
+
+Representa una expansión o set de Pokémon TCG.
+
+La información puede provenir de TCGdex.
+
+### Card
+
+Representa una carta del catálogo.
+
+Contiene información como:
+
+- ID de TCGdex
+- nombre
+- número local
+- rareza
+- ilustrador
+- imagen
+- set
+
+Una carta también puede tener una imagen personalizada almacenada en Object Storage.
+
+### Product
+
+Representa una versión de una carta que realmente está a la venta.
+
+Mantiene información propia de la tienda:
+
+- SKU
+- idioma
+- condición
+- variante
+- descripción
+- precio
+- stock
+
+Una misma `Card` puede tener varios `Product`.
+
+Esto permite vender, por ejemplo, la misma carta en distintos idiomas, condiciones o variantes sin duplicar la información del catálogo.
+
+---
+
+## Pedidos e inventario
+
+El carrito almacena únicamente IDs de productos y cantidades dentro de la sesión.
+
+Agregar un producto al carrito **no reserva ni descuenta stock**.
+
+El inventario se modifica al completar correctamente el checkout.
+
+Durante la creación de un pedido:
+
+1. Los productos se vuelven a consultar desde la base de datos.
+2. Se comprueba nuevamente el stock disponible.
+3. El total se calcula utilizando los precios almacenados en el servidor.
+4. Se crea el pedido.
+5. Se crean los `OrderItem`.
+6. Se descuenta el inventario.
+7. La operación se ejecuta dentro de una transacción.
+
+La lógica principal se encuentra centralizada en:
+
+```text
+products/services/orders.py
+```
+
+Esto permite reutilizar la misma lógica desde vistas, administración y futuras integraciones como pagos o webhooks.
+
+### Cancelación
+
+Cuando un pedido se cancela, el stock se restaura automáticamente.
+
+El sistema utiliza `stock_restored` para impedir que una cancelación repetida pueda devolver el mismo inventario más de una vez.
+
+### Reactivación
+
+Si un pedido cancelado vuelve a un estado activo, el sistema comprueba primero que exista suficiente inventario.
+
+Solo después de validar todos los productos vuelve a descontar las unidades.
+
+---
+
+## Seguridad de pedidos
+
+Cada pedido posee un identificador público UUID independiente del ID interno de la base de datos.
+
+Ejemplo:
+
+```text
+/orders/<uuid>/success/
+```
+
+La página de confirmación también comprueba que el pedido haya sido creado desde la sesión actual.
+
+Esto evita exponer pedidos utilizando IDs numéricos consecutivos y dificulta el acceso a información de otros clientes.
+
+---
+
+## Instalación local
+
+### Windows / PowerShell
+
+Clona el repositorio y entra al proyecto.
+
+Crea el entorno virtual:
 
 ```powershell
-git switch strengthen
 python -m venv venv
+```
+
+Actívalo:
+
+```powershell
 .\venv\Scripts\Activate.ps1
+```
+
+Instala las dependencias:
+
+```powershell
 python -m pip install -r requirements.txt
+```
+
+Crea tu archivo de variables de entorno:
+
+```powershell
 Copy-Item .env.example .env
+```
+
+Genera una clave secreta:
+
+```powershell
 python -c "import secrets; print(secrets.token_urlsafe(64))"
 ```
 
-Copia la clave generada al valor `DJANGO_SECRET_KEY` de `.env`.
-Conserva `DJANGO_DEBUG=true` solo en desarrollo. Si ya tienes `.env`, edítalo sin
-sobrescribir tus valores. Nunca subas `.env` ni claves al repositorio.
+Copia el resultado en:
+
+```text
+DJANGO_SECRET_KEY
+```
+
+dentro de `.env`.
+
+Nunca subas `.env`, contraseñas, tokens o claves privadas al repositorio.
+
+---
+
+## Base de datos
+
+La aplicación puede conectarse a PostgreSQL mediante:
+
+```text
+DATABASE_URL
+```
+
+Ejemplo de estructura:
+
+```text
+postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
+```
+
+Las credenciales reales deben almacenarse únicamente en `.env` o en las variables de entorno de la plataforma de despliegue.
+
+Aplica las migraciones:
 
 ```powershell
 python manage.py migrate
+```
+
+Crea un administrador:
+
+```powershell
 python manage.py createsuperuser
+```
+
+---
+
+## Object Storage
+
+Las imágenes personalizadas pueden almacenarse en un servicio compatible con S3.
+
+Variables utilizadas:
+
+```text
+AWS_ENDPOINT_URL_S3
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+AWS_REGION
+AWS_STORAGE_BUCKET_NAME
+```
+
+Las credenciales reales nunca deben guardarse en Git.
+
+Los archivos almacenados localmente antes de configurar Object Storage no se migran automáticamente.
+
+---
+
+## Ejecutar el servidor
+
+```powershell
 python manage.py runserver
 ```
 
-Abre http://127.0.0.1:8000/ y http://127.0.0.1:8000/admin/.
-En macOS/Linux activa el entorno con `source venv/bin/activate` y copia el ejemplo
-con `cp .env.example .env`; los comandos Python son iguales.
+Aplicación:
 
-## Actualizar una instalación existente
+```text
+http://127.0.0.1:8000/
+```
 
-1. Detén el servidor y respalda `db.sqlite3` antes de aplicar migraciones.
-2. Instala `requirements.txt` y configura `.env` con una **clave nueva**: la anterior
-   estaba incluida en el código público. El cambio puede invalidar sesiones existentes.
-3. Ejecuta `python manage.py migrate`.
-4. En el administrador completa idioma, condición y variante. Los productos previos
-   quedan en **Por definir**, sin asumir su estado; cada uno recibe un SKU único.
+Administración:
 
-La migración `0003` conserva precio, stock, descripción y vínculos existentes.
-Si encuentra precios negativos se detiene con un mensaje: corrígelos y repite.
-Los productos antiguos sin carta se conservan para revisión, pero no se muestran
-ni pueden agregarse al carrito. Asóciales una carta desde el administrador.
-No borres las migraciones anteriores ni recrees la base de datos para actualizar.
+```text
+http://127.0.0.1:8000/admin/
+```
 
-## Cargar el catálogo
+---
+
+## Importar cartas desde TCGdex
+
+Importar una carta:
 
 ```powershell
 python manage.py import_card base1-4
+```
+
+Importar algunas cartas de un set:
+
+```powershell
 python manage.py import_set base1 --limit 5
+```
+
+Importar un set:
+
+```powershell
 python manage.py import_set base1
 ```
 
-La fuente de metadatos se mantiene en **inglés** (`/v2/en`); el idioma del producto
-representa la carta física y se configura por separado. Importar una carta no crea
-un producto a la venta: créalo en el administrador y fija precio, stock y versión.
-Se permiten varias ofertas de una carta con SKU distintos.
+La fuente del catálogo se mantiene en inglés.
 
-El servicio en `products/services/tcgdex.py` valida IDs, campos y URLs, aplica un
-límite de 15 segundos a cada solicitud y hasta 3 intentos ante errores de red,
-HTTP 429 o errores transitorios del servidor. Cada carta y su set se guardan en
-una transacción; las llamadas HTTP ocurren antes de abrirla.
+El idioma configurado en `Product` representa el idioma de la carta física que se está vendiendo.
 
-`import_set` consulta el detalle de cada carta. Si alguna falla, continúa con las
-restantes y termina con un resumen y código de error. Las cartas correctas se
-conservan. Repite el comando para reintentar; no se duplica el catálogo ni se altera
-el inventario comercial. Los sets existentes también actualizan sus metadatos.
+Importar una carta **no crea automáticamente un producto a la venta**.
 
-Referencia del formato externo: [carta](https://tcgdex.dev/rest/card) y
-[set](https://tcgdex.dev/rest/set).
+Después de importar la carta, el producto comercial se crea desde el administrador configurando:
 
-## Rutas
+- precio
+- stock
+- idioma
+- condición
+- variante
+
+---
+
+## Servicio TCGdex
+
+La integración se encuentra principalmente en:
+
+```text
+products/services/tcgdex.py
+```
+
+El servicio:
+
+- valida IDs;
+- valida campos recibidos;
+- valida URLs;
+- utiliza un timeout limitado;
+- reintenta errores transitorios;
+- evita modificar productos comerciales;
+- utiliza transacciones para cambios del catálogo.
+
+Las importaciones repetidas no deben duplicar cartas ni modificar precio o inventario de `Product`.
+
+---
+
+## Rutas principales
 
 | Ruta | Función |
 | --- | --- |
-| `/` | Catálogo; parámetros `q`, `set`, `in_stock=1`, `sort` y `page` |
-| `/products/<id>/` | Detalle de un producto específico |
-| `/cards/<tcgdex_id>/` | Enlace antiguo: redirige si hay un producto o muestra versiones |
-| `/cart/` | Carrito de la sesión actual |
-| `/cart/add/<id>/` | Agregar cantidad mediante POST y CSRF |
-| `/cart/update/<id>/` | Reemplazar cantidad mediante POST y CSRF |
-| `/cart/remove/<id>/` | Quitar producto mediante POST y CSRF |
-| `/admin/` | Administración |
+| `/` | Catálogo |
+| `/products/<id>/` | Detalle de producto |
+| `/cards/<tcgdex_id>/` | Compatibilidad con enlaces de cartas |
+| `/cart/` | Carrito |
+| `/cart/add/<id>/` | Agregar producto |
+| `/cart/update/<id>/` | Actualizar cantidad |
+| `/cart/remove/<id>/` | Eliminar del carrito |
+| `/checkout/` | Checkout |
+| `/orders/<uuid>/success/` | Confirmación protegida del pedido |
+| `/admin/` | Administración Django |
 
-Órdenes válidos: `newest`, `price_asc`, `price_desc`, `name`.
-El carrito almacena únicamente IDs y cantidades. Si cambia el stock, muestra una
-advertencia para ajustar la cantidad; si se elimina o desvincula el producto,
-lo retira del carrito. Los totales usan `Decimal` y el precio actual de la base.
+El catálogo acepta parámetros como:
 
-## Verificación
+```text
+q
+set
+in_stock
+sort
+page
+```
+
+Opciones de orden:
+
+```text
+newest
+price_asc
+price_desc
+name
+```
+
+---
+
+## Tests
+
+El proyecto dispone actualmente de **45 tests automatizados**.
+
+Ejecuta:
 
 ```powershell
-python manage.py check
-python manage.py makemigrations --check --dry-run
 python manage.py test
 ```
 
-Las pruebas cubren la migración de inventario existente, variantes y rutas,
-búsqueda/paginación, imágenes ausentes, restricciones, sesión/CSRF, cambios de
-precio/stock e importaciones repetidas, inválidas y parcialmente fallidas.
-La API externa se simula en las pruebas para que no dependan de disponibilidad
-ni modifiquen catálogos remotos.
+También puedes comprobar la configuración:
 
-## Configuración para despliegue
+```powershell
+python manage.py check
+```
 
-| Variable | Uso |
-| --- | --- |
-| `DJANGO_SECRET_KEY` | Obligatoria; generar una nueva por entorno |
-| `DJANGO_DEBUG` | `true` solo local; por defecto `false` |
-| `DJANGO_ALLOWED_HOSTS` | Hosts separados por comas, sin esquema |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | Orígenes HTTPS confiables separados por comas, si se requieren |
+Y comprobar si existen cambios de modelos sin migración:
 
-Con `DEBUG=false` se habilitan cookies seguras, redirección HTTPS y HSTS de un año
-(solo el dominio actual). Configura HTTPS y el servidor de estáticos antes de
-publicar: `python manage.py collectstatic --noinput`. Si usas un proxy que termina
-TLS, configura el encabezado de protocolo seguro **según ese proveedor y solo
-si el proxy elimina encabezados enviados por el cliente**; no se confía en un
-encabezado arbitrario por defecto.
+```powershell
+python manage.py makemigrations --check --dry-run
+```
 
-La configuración conserva SQLite para desarrollo. Este cambio no despliega el
-sitio ni configura una pasarela de pago. Antes de habilitar pedidos se necesita
-validación final de precios/stock, actualización atómica de inventario y una
-integración de pagos con confirmación verificable e idempotente.
+Los tests cubren, entre otros:
+
+- modelos;
+- restricciones de base de datos;
+- catálogo;
+- carrito;
+- sesiones;
+- CSRF;
+- importación desde TCGdex;
+- checkout;
+- creación de pedidos;
+- cálculo de precios en servidor;
+- reducción de stock;
+- protección de confirmaciones de pedido;
+- UUID público;
+- cancelación de pedidos;
+- restauración de inventario;
+- prevención de restauración doble;
+- reactivación de pedidos;
+- validación de stock al reactivar.
+
+Durante los tests se utiliza una base SQLite local separada para evitar crear o eliminar bases de prueba dentro de Neon.
+
+---
+
+## Variables de entorno
+
+### Django
+
+```text
+DJANGO_SECRET_KEY
+DJANGO_DEBUG
+DJANGO_ALLOWED_HOSTS
+DJANGO_CSRF_TRUSTED_ORIGINS
+```
+
+### Base de datos
+
+```text
+DATABASE_URL
+```
+
+### Object Storage
+
+```text
+AWS_ENDPOINT_URL_S3
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+AWS_REGION
+AWS_STORAGE_BUCKET_NAME
+```
+
+Nunca almacenes valores reales de producción en `.env.example`.
+
+---
+
+## Estado actual
+
+Actualmente están implementados:
+
+```text
+TCGdex
+    ↓
+Catálogo
+    ↓
+Product
+    ↓
+Carrito
+    ↓
+Checkout
+    ↓
+Order + OrderItem
+    ↓
+Control transaccional de inventario
+```
+
+La base de datos utiliza PostgreSQL administrado y las imágenes personalizadas pueden almacenarse mediante Object Storage compatible con S3.
+
+---
+
+## Próximas etapas
+
+Las siguientes etapas previstas son:
+
+1. Preparación del proyecto para producción.
+2. Despliegue.
+3. Configuración de archivos estáticos.
+4. Sistema de despacho/retiro.
+5. Integración de pagos.
+6. Webhooks de confirmación de pago.
+7. Emails transaccionales.
+8. Cuentas de clientes e historial de pedidos.
+9. Wishlist y avisos de reposición.
+10. Dashboard administrativo y alertas de stock.
+
+---
+
+## Importante
+
+Este proyecto todavía está en desarrollo.
+
+Antes de utilizarlo como tienda real deben completarse y verificarse especialmente:
+
+- despliegue de producción;  
+- configuración HTTPS;
+- sistema de despacho;
+- integración de pagos;
+- confirmación segura e idempotente de pagos;
+- emails transaccionales;
+- pruebas de integración en PostgreSQL.
