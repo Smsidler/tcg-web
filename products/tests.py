@@ -16,7 +16,7 @@ from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
 from .admin import CardAdmin, ProductAdmin
-from .models import Card, Product, Set
+from .models import Card, Order, OrderItem, Product, Set
 from .services.tcgdex import CatalogError, fetch_json, import_card
 from .templatetags.product_filters import clp
 
@@ -301,6 +301,169 @@ class ImportTests(ProductFixture):
     def test_invalid_import_limit(self):
         with self.assertRaises(CommandError):
             call_command("import_set", "base1", limit=0)
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class CheckoutTests(ProductFixture):
+        def setUp(self):
+            self.checkout_data = {
+               "name": "Cliente Test",
+                "email": "cliente@example.com",
+                "phone": "+56912345678",
+                "address": "Av. Siempre Viva 123",
+                "commune": "Santiago",
+                "notes": "Pedido de prueba",
+            }
+
+        def add_to_cart(self, quantity=1):
+            return self.client.post(
+                reverse("cart_add", args=[self.product.pk]),
+                {"quantity": quantity},
+            )
+
+        def test_checkout_creates_order_and_order_item(self):
+            self.add_to_cart(2)
+
+            response = self.client.post(
+                reverse("checkout"),
+                self.checkout_data,
+            )
+
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(Order.objects.count(), 1)
+            self.assertEqual(OrderItem.objects.count(), 1)
+
+            order = Order.objects.get()
+            item = OrderItem.objects.get()
+
+            self.assertEqual(order.name, "Cliente Test")
+            self.assertEqual(order.email, "cliente@example.com")
+            self.assertEqual(order.total, Decimal("2000.00"))
+            self.assertEqual(order.status, Order.Status.PENDING)
+
+            self.assertEqual(item.order, order)
+            self.assertEqual(item.product, self.product)
+            self.assertEqual(item.quantity, 2)
+            self.assertEqual(item.unit_price, Decimal("1000.00"))
+            self.assertEqual(item.subtotal, Decimal("2000.00"))
+
+        def test_checkout_reduces_stock(self):
+            self.add_to_cart(3)
+
+            self.client.post(
+                reverse("checkout"),
+                self.checkout_data,
+            )
+
+            self.product.refresh_from_db()
+            self.assertEqual(self.product.stock, 1)
+
+        def test_checkout_clears_cart(self):
+            self.add_to_cart(1)
+
+            self.client.post(
+                reverse("checkout"),
+                self.checkout_data,
+            )
+
+            self.assertEqual(
+                self.client.session.get("cart"),
+                {},
+            )
+
+        def test_checkout_uses_server_price(self):
+            self.add_to_cart(2)
+
+            Product.objects.filter(
+                pk=self.product.pk
+            ).update(price=Decimal("2500.00"))
+
+            malicious_data = {
+                **self.checkout_data,
+                "price": "1",
+                "total": "1",
+            }
+
+            self.client.post(
+                reverse("checkout"),
+                malicious_data,
+            )
+
+            order = Order.objects.get()
+            item = OrderItem.objects.get()
+
+            self.assertEqual(
+                order.total,
+                Decimal("5000.00"),
+            )
+            self.assertEqual(
+                item.unit_price,
+                Decimal("2500.00"),
+            )
+
+        def test_empty_cart_cannot_create_order(self):
+            response = self.client.post(
+                reverse("checkout"),
+                self.checkout_data,
+            )
+
+            self.assertEqual(Order.objects.count(), 0)
+            self.assertEqual(OrderItem.objects.count(), 0)
+            self.assertEqual(response.status_code, 302)
+
+        def test_order_success_requires_same_session(self):
+            self.add_to_cart(1)
+
+            response = self.client.post(
+                reverse("checkout"),
+                self.checkout_data,
+            )
+
+            order = Order.objects.get()
+
+            success_url = reverse(
+                "order_success",
+                kwargs={"public_id": order.public_id},
+            )
+
+            self.assertRedirects(
+                response,
+                success_url,
+            )
+
+            # El navegador que realizó la compra puede verla.
+            response = self.client.get(success_url)
+            self.assertEqual(response.status_code, 200)
+
+            # Otra sesión no debe poder acceder al pedido.
+            other_client = Client()
+            response = other_client.get(success_url)
+
+            self.assertEqual(response.status_code, 404)
+
+        def test_order_uses_public_uuid_not_numeric_id(self):
+            self.add_to_cart(1)
+
+            self.client.post(
+                reverse("checkout"),
+                self.checkout_data,
+            )
+
+            order = Order.objects.get()
+
+            success_url = reverse(
+                "order_success",
+                kwargs={"public_id": order.public_id},
+            )
+
+            self.assertIn(
+                str(order.public_id),
+                success_url,
+            )
+
+            numeric_url = f"/orders/{order.pk}/success/"
+            response = self.client.get(numeric_url)
+
+            self.assertEqual(response.status_code, 404)
 
 
 class ExistingInventoryMigrationTests(TransactionTestCase):
