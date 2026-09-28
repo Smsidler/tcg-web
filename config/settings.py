@@ -111,6 +111,11 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+
+    # WhiteNoise debe ir inmediatamente después
+    # de SecurityMiddleware.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -301,11 +306,17 @@ AWS_DEFAULT_ACL = None
 # STORAGE DE DJANGO
 # =========================================================
 
-# Usaremos Neon Object Storage solamente cuando
-# las credenciales necesarias estén configuradas.
+# Neon Object Storage se utiliza únicamente para
+# imágenes y archivos subidos por los usuarios.
 #
-# Esto permite que el proyecto siga funcionando
-# localmente incluso si no configuramos S3.
+# Los archivos estáticos (CSS, JS, archivos del admin)
+# son manejados por WhiteNoise.
+#
+# Esto permite separar:
+#
+# MEDIA  -> Neon Object Storage
+# STATIC -> WhiteNoise
+
 
 USE_S3_STORAGE = all(
     [
@@ -353,8 +364,8 @@ if USE_S3_STORAGE:
 
         "staticfiles": {
             "BACKEND": (
-                "django.contrib.staticfiles.storage."
-                "StaticFilesStorage"
+                "whitenoise.storage."
+                "CompressedManifestStaticFilesStorage"
             ),
         },
     }
@@ -378,10 +389,12 @@ else:
             ),
         },
 
+        # WhiteNoise también puede utilizarse
+        # cuando trabajamos sin S3.
         "staticfiles": {
             "BACKEND": (
-                "django.contrib.staticfiles.storage."
-                "StaticFilesStorage"
+                "whitenoise.storage."
+                "CompressedManifestStaticFilesStorage"
             ),
         },
     }
